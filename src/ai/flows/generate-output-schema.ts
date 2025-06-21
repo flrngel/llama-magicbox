@@ -48,11 +48,11 @@ Now, generate the schema string for the following user description.`;
       throw new Error('No response received from Llama API');
     }
 
-    if (typeof response !== 'string') {
-      return { schema: response.text };
+    if (typeof response === 'string') {
+      return { schema: response };
+    } else {
+      return { schema: String(response) };
     }
-
-    return { schema: response };
     
   } catch (error) {
     console.error('Error generating output schema:', error);

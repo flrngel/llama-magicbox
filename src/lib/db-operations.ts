@@ -24,7 +24,7 @@ export function getUserByEmail(email: string): User | undefined {
 export function getSolutions(): Solution[] {
   const statements = getStatements();
   const rows = statements.getAllSolutions.all();
-  return rows.map(row => {
+  return rows.map((row: any) => {
     const solution = rowToSolution(row);
     // Get training data items for this solution
     const dataItems = getDataItemsForSolution(solution.id);

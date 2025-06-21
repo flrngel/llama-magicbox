@@ -11,12 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { FileUploader } from "@/components/file-uploader";
-import { ChatTrainer, Message } from "@/components/chat-trainer";
 import { ResultsViewer } from "@/components/results-viewer";
+import { TrainingStudio } from "@/components/training-studio";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle, Share2, Sparkles, Lock, Loader2 } from "lucide-react";
-import { Solution, DataItem } from "@/lib/data";
+import { Solution } from "@/lib/data";
 import { createSolution } from "@/lib/data-client";
 import { useToast } from "@/hooks/use-toast";
 import { generateOutputSchema } from "@/ai/flows/generate-output-schema";
@@ -42,8 +42,6 @@ export default function CreatePage() {
   const [outputStructureDescription, setOutputStructureDescription] = useState("");
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
 
-  const [trainingData, setTrainingData] = useState<Omit<DataItem, 'id' | 'solutionId' | 'createdAt' | 'updatedAt'>[]>([]);
-  const [chatMessages, setChatMessages] = useState<Message[]>([]);
 
   // State for Test Step
   const [testFile, setTestFile] = useState<File[]>([]);
@@ -69,32 +67,6 @@ export default function CreatePage() {
     }
   }, [user, isLoading, newSolution.creatorId, updateSolution]);
 
-  const handleFileUploads = async (files: File[]) => {
-    const newDataItems: Omit<DataItem, 'id' | 'solutionId' | 'createdAt' | 'updatedAt'>[] = [];
-    
-    for (const file of files) {
-        const reader = new FileReader();
-        const filePromise = new Promise<string>((resolve, reject) => {
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = (error) => reject(error);
-            reader.readAsDataURL(file);
-        });
-
-        try {
-            const content_uri = await filePromise;
-            newDataItems.push({
-                type: file.type.startsWith('image') ? 'image' : 'pdf', // Simplified
-                content_uri,
-                guided_prompt: `Guidance for ${file.name}`,
-                model_output: null,
-            });
-        } catch (error) {
-            console.error("Error reading file:", error);
-            toast({ title: "File Read Error", description: `Could not process ${file.name}.`, variant: "destructive" });
-        }
-    }
-    setTrainingData(prev => [...prev, ...newDataItems]);
-  };
 
   const handlePublish = async () => {
     try {
@@ -112,7 +84,7 @@ export default function CreatePage() {
       
       const published = await createSolution({
         solutionData: finalSolutionData,
-        dataItemsData: trainingData,
+        dataItemsData: [], // Training data is now handled internally by TrainingStudio
       });
       
       updateSolution({ slug: published.slug }); // save slug for final page
@@ -177,8 +149,6 @@ export default function CreatePage() {
   const resetCreateFlow = () => {
     setNewSolution(getInitialSolutionState());
     setOutputStructureDescription("");
-    setTrainingData([]);
-    setChatMessages([]);
     setTestFile([]);
     setTestResult(null);
     setTestError(null);
@@ -194,7 +164,6 @@ export default function CreatePage() {
 
   const progress = (step / 4) * 100;
   const isStep1Valid = (newSolution.name?.length ?? 0) > 0 && (newSolution.description?.length ?? 0) >= 20 && outputStructureDescription.length > 10;
-  const isStep2Valid = trainingData.length > 0 && chatMessages.filter(m => m.sender === 'user').length >= 1;
   const isStep3Valid = testResult !== null;
 
   const handleBack = () => setStep((s) => s - 1);
@@ -228,14 +197,12 @@ export default function CreatePage() {
             </Card>
           )}
           {step === 2 && (
-            <div>
-              <h2 className="text-2xl font-bold mb-4 font-headline">2. Train with Documents</h2>
-              <div className="grid md:grid-cols-2 gap-8">
-                <div className="space-y-4"><h3 className="font-bold">Upload Example Documents</h3><FileUploader onUpload={handleFileUploads} maxFiles={10} multiple /></div>
-                <div><h3 className="font-bold">Refine Instructions</h3><ChatTrainer messages={chatMessages} setMessages={setChatMessages} solution={newSolution} updateSolution={updateSolution} /></div>
-              </div>
-              <div className="mt-8 flex justify-end"><Button onClick={() => setStep(s => s + 1)} disabled={!isStep2Valid}>Test Solution <Sparkles className="ml-2 h-4 w-4" /></Button></div>
-            </div>
+            <TrainingStudio
+              solution={newSolution}
+              updateSolution={updateSolution}
+              onComplete={() => setStep(s => s + 1)}
+              onBack={handleBack}
+            />
           )}
           {step === 3 && (
             <div>

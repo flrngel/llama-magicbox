@@ -5,37 +5,27 @@
  * Note: This version works with text content since Llama API doesn't support direct file processing.
  */
 
-import { callLlama } from '@/ai/llama-client';
+import { callLlama, MessageContent } from '@/ai/llama-client';
 import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export interface ProcessDocumentInput {
   fileDataUri: string;
   systemInstructions: string;
-  modelOutputStructure: string;
+  modelOutputStructure: string; // Keep string for backward compatibility
+  outputSchema?: z.ZodType<any>; // New optional Zod schema for structured output
 }
 
 export interface ProcessDocumentOutput {
   [key: string]: any;
 }
 
-function extractTextFromDataUri(dataUri: string): string {
-  // For demonstration purposes, return sample content
-  // In a real implementation, you would use OCR or text extraction libraries
-  if (dataUri.includes('pdf')) {
-    return `Invoice #12345
-Date: 2023-12-01
-Vendor: ABC Company
-Total: $150.00
-Items: Office Supplies
-Payment Terms: Net 30
-Tax: $12.00`;
-  } else {
-    return `Receipt from Corner Store
-Date: 2023-11-15
-Total: $25.67
-Items: Groceries
-Payment Method: Credit Card`;
-  }
+function isImageDataUri(dataUri: string): boolean {
+  return dataUri.startsWith('data:image/');
+}
+
+function isPdfDataUri(dataUri: string): boolean {
+  return dataUri.startsWith('data:application/pdf');
 }
 
 function validateWithZodSchema(data: any, schemaString: string): any {
@@ -59,27 +49,21 @@ export async function processDocument(
   input: ProcessDocumentInput
 ): Promise<ProcessDocumentOutput> {
   try {
-    // Extract text content from the data URI
-    const documentText = extractTextFromDataUri(input.fileDataUri);
-    
-    // Create an enhanced prompt that better leverages the Zod schema
-    const prompt = `You are an expert document processing AI that extracts structured data from documents.
+    // Always use vision-based processing for all document types
+    const prompt = `You are an expert document processing AI that extracts structured data from images and documents.
 
 **CRITICAL INSTRUCTIONS:**
-1. Analyze the document content below
-2. Extract information according to the System Instructions
-3. Return a JSON object that EXACTLY matches the required Zod schema structure
+1. Analyze the image/document carefully to extract all visible information
+2. Extract information according to the System Instructions below
+3. Return a JSON object that EXACTLY matches the required schema structure
 4. Ensure all field names and types match the schema precisely
 5. Use null for missing values unless the schema specifies defaults
 
 **System Instructions:**
 ${input.systemInstructions}
 
-**Required Output Schema (Zod format):**
+**Required Output Schema:**
 ${input.modelOutputStructure}
-
-**Document Content:**
-${documentText}
 
 **RESPONSE FORMAT:**
 - Return ONLY a valid JSON object
@@ -90,38 +74,116 @@ ${documentText}
 
 JSON Response:`;
 
+    // debug
+    console.log('modelOutputStructure', input.modelOutputStructure);
+
+    const userContent: MessageContent = [
+      { type: 'text', text: prompt },
+      { type: 'image_url', image_url: { url: input.fileDataUri } }
+    ];
+
+    // Prepare options for Llama API call
+    const llamaOptions: any = {
+      temperature: 0.1, // Low temperature for more consistent structured output
+    };
+
+    // Use structured output if Zod schema is provided
+    if (input.outputSchema) {
+      try {
+        const jsonSchema = zodToJsonSchema(input.outputSchema);
+        llamaOptions.jsonSchema = {
+          name: 'document_extraction',
+          schema: jsonSchema
+        };
+      } catch (schemaError) {
+        console.warn('Failed to convert Zod schema to JSON schema, falling back to JSON mode:', schemaError);
+        llamaOptions.jsonMode = true;
+      }
+    } else {
+      llamaOptions.jsonMode = true; // Fallback to JSON mode prompting
+    }
+
     const llamaResponse = await callLlama([
       { role: 'system', content: 'You are a data extraction expert that returns valid JSON objects only.' },
-      { role: 'user', content: prompt }
-    ], 'Llama-4-Maverick-17B-128E-Instruct-FP8', {
-      temperature: 0.1, // Low temperature for more consistent structured output
-      jsonMode: true    // Enhanced JSON mode prompting
-    });
+      { role: 'user', content: userContent }
+    ], 'Llama-4-Maverick-17B-128E-Instruct-FP8', llamaOptions);
 
-    let response;
+    let response: string;
+    console.log('llamaResponse type:', typeof llamaResponse);
+    console.log('llamaResponse:', llamaResponse);
+    
     if (!llamaResponse) {
       throw new Error('No response received from Llama API');
-    } else if (typeof llamaResponse !== 'string') {
-      response = llamaResponse.text;
-    } else {
+    } else if (typeof llamaResponse === 'string') {
       response = llamaResponse;
+    } else {
+      // Handle the case where llamaResponse might be a complex object
+      console.warn('Received non-string response from Llama API, attempting to convert:', llamaResponse);
+      if (typeof llamaResponse === 'object' && llamaResponse !== null) {
+        // If it's an object, try to extract meaningful content
+        if ('content' in llamaResponse) {
+          response = String((llamaResponse as any).content);
+        } else {
+          // Try to serialize as JSON
+          try {
+            response = JSON.stringify(llamaResponse);
+          } catch (err) {
+            console.error('Failed to serialize Llama response:', err);
+            response = String(llamaResponse);
+          }
+        }
+      } else {
+        response = String(llamaResponse);
+      }
     }
+
+    console.log('Final response string:', response);
 
     // Try to parse the response as JSON
     try {
       const parsedData = JSON.parse(response.trim());
       
-      // Validate against the Zod schema if possible
-      const validatedData = validateWithZodSchema(parsedData, input.modelOutputStructure);
-      
-      return validatedData;
+      // Validate against the Zod schema if available
+      if (input.outputSchema) {
+        try {
+          const validatedData = input.outputSchema.parse(parsedData);
+          return validatedData;
+        } catch (zodError) {
+          console.warn('Zod validation failed:', zodError);
+          // Return raw data if validation fails, with warning
+          return {
+            ...parsedData,
+            _validation_warning: 'Data did not fully match expected schema',
+            _validation_errors: zodError instanceof Error ? zodError.message : String(zodError)
+          };
+        }
+      } else {
+        // Fallback validation using string-based schema
+        const validatedData = validateWithZodSchema(parsedData, input.modelOutputStructure);
+        return validatedData;
+      }
     } catch (parseError) {
       // If parsing fails, try to extract JSON from response
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
           const extractedData = JSON.parse(jsonMatch[0]);
-          return validateWithZodSchema(extractedData, input.modelOutputStructure);
+          
+          // Validate with Zod schema if available
+          if (input.outputSchema) {
+            try {
+              return input.outputSchema.parse(extractedData);
+            } catch (zodError) {
+              console.warn('Zod validation failed on extracted JSON:', zodError);
+              return {
+                ...extractedData,
+                _validation_warning: 'Extracted data did not match expected schema',
+                _validation_errors: zodError instanceof Error ? zodError.message : String(zodError)
+              };
+            }
+          } else {
+            return validateWithZodSchema(extractedData, input.modelOutputStructure);
+          }
         } catch (secondParseError) {
           console.warn('Failed to parse extracted JSON:', jsonMatch[0]);
         }
@@ -132,8 +194,8 @@ JSON Response:`;
       return {
         extracted_text: response.trim(),
         processing_status: 'parse_error',
-        note: 'AI response was not valid JSON - check model_output_structure schema',
-        expected_schema: input.modelOutputStructure
+        note: 'AI response was not valid JSON - check output schema',
+        expected_schema: input.outputSchema ? 'Zod schema provided' : input.modelOutputStructure
       };
     }
   } catch (error) {

@@ -50,11 +50,16 @@ Generate the response as JSON with two fields: "updatedSystemInstructions" and "
     ]);
 
     try {
-      const parsed = JSON.parse(response.trim());
-      return {
-        updatedSystemInstructions: parsed.updatedSystemInstructions || input.currentInstructions || '',
-        aiResponse: parsed.aiResponse || 'I\'ve updated the instructions based on your feedback.'
-      };
+      if (response) {
+        const responseStr = typeof response === 'string' ? response : String(response);
+        const parsed = JSON.parse(responseStr.trim());
+        return {
+          updatedSystemInstructions: parsed.updatedSystemInstructions || input.currentInstructions || '',
+          aiResponse: parsed.aiResponse || 'I\'ve updated the instructions based on your feedback.'
+        };
+      } else {
+        throw new Error('No response received');
+      }
     } catch (parseError) {
       // Fallback if JSON parsing fails
       return {
