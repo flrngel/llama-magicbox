@@ -1,54 +1,69 @@
 'use server';
+
 /**
- * @fileOverview Allows the creator to refine a solution by interacting with the AI through a chat interface.
- *
- * - refineSolution - A function that handles the solution refinement process.
- * - RefineSolutionInput - The input type for the refineSolution function.
- * - RefineSolutionOutput - The return type for the refineSolution function.
+ * @fileOverview A flow to refine and improve solution instructions based on user feedback.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { callLlama } from '@/ai/llama-client';
 
-const RefineSolutionInputSchema = z.object({
-  solutionId: z.string().describe('The ID of the solution to refine.'),
-  userInput: z.string().describe('The user input to further train/refine the solution.'),
-  trainingContext: z.string().optional().describe('The previous training context (conversation history).'),
-});
-export type RefineSolutionInput = z.infer<typeof RefineSolutionInputSchema>;
-
-const RefineSolutionOutputSchema = z.object({
-  updatedSolution: z.string().describe('The updated solution.'),
-  newTrainingContext: z.string().describe('The updated training context, including the latest user input and AI response.'),
-});
-export type RefineSolutionOutput = z.infer<typeof RefineSolutionOutputSchema>;
-
-export async function refineSolution(input: RefineSolutionInput): Promise<RefineSolutionOutput> {
-  return refineSolutionFlow(input);
+export interface RefineSolutionInput {
+  currentInstructions?: string;
+  userInput: string;
+  trainingContext?: string;
+  modelOutputStructure: string;
 }
 
-const refineSolutionPrompt = ai.definePrompt({
-  name: 'refineSolutionPrompt',
-  input: {schema: RefineSolutionInputSchema},
-  output: {schema: RefineSolutionOutputSchema},
-  prompt: `You are an AI assistant helping a user refine their AI solution. The user has provided the following input to further train/refine the solution: {{{userInput}}}.
+export interface RefineSolutionOutput {
+  updatedSystemInstructions: string;
+  aiResponse: string;
+}
 
-  Previous Training Context: {{{trainingContext}}}
+export async function refineSolution(
+  input: RefineSolutionInput
+): Promise<RefineSolutionOutput> {
+  try {
+    const prompt = `You are an AI assistant that helps a user build a "System Instruction" prompt for another AI.
+The user wants to process documents and get a JSON output with this structure: ${input.modelOutputStructure}.
 
-  Update the solution and provide a new training context incorporating the user's latest input.
-  Ensure that newTrainingContext contains both user's input and AI's response.
+The user's conversation with you so far (the training context):
+${input.trainingContext || 'This is the beginning of our conversation.'}
 
-  Updated Solution:`, // Placeholder - will need more detailed instructions
-});
+The current System Instruction is:
+"${input.currentInstructions || 'You are a helpful AI assistant. Extract information from the provided document based on the user\'s requirements and return it as a structured JSON object.'}"
 
-const refineSolutionFlow = ai.defineFlow(
-  {
-    name: 'refineSolutionFlow',
-    inputSchema: RefineSolutionInputSchema,
-    outputSchema: RefineSolutionOutputSchema,
-  },
-  async input => {
-    const {output} = await refineSolutionPrompt(input);
-    return output!;
+The user has just said:
+"${input.userInput}"
+
+Your tasks:
+1. Synthesize a new, improved "System Instruction". It should incorporate the user's latest feedback. The instruction must be a complete, self-contained prompt for another AI. It should tell the AI to extract information from a document and format it as JSON according to the user's desired structure.
+2. Provide a short, conversational response to the user confirming you've understood their request.
+
+Example:
+If the user says "focus on the total amount and vendor name", your response could be "Got it. I will update the instructions to focus on extracting the total amount and vendor name. Is there anything else?"
+Your new System Instruction would then be a comprehensive prompt that includes this new focus.
+
+Generate the response as JSON with two fields: "updatedSystemInstructions" and "aiResponse".`;
+
+    const response = await callLlama([
+      { role: 'system', content: 'You are an expert at creating system prompts for AI assistants. Always return valid JSON.' },
+      { role: 'user', content: prompt }
+    ]);
+
+    try {
+      const parsed = JSON.parse(response.trim());
+      return {
+        updatedSystemInstructions: parsed.updatedSystemInstructions || input.currentInstructions || '',
+        aiResponse: parsed.aiResponse || 'I\'ve updated the instructions based on your feedback.'
+      };
+    } catch (parseError) {
+      // Fallback if JSON parsing fails
+      return {
+        updatedSystemInstructions: input.currentInstructions || 'You are a helpful AI assistant. Extract information from the provided document based on the user\'s requirements and return it as a structured JSON object.',
+        aiResponse: 'I understand your feedback and will incorporate it into the instructions.'
+      };
+    }
+  } catch (error) {
+    console.error('Error refining solution:', error);
+    throw new Error('Failed to refine solution');
   }
-);
+}

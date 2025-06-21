@@ -7,6 +7,7 @@ import { Bot, User, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { refineSolution } from "@/ai/flows/refine-solution-flow";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Solution } from "@/lib/data";
 
 export interface Message {
   sender: "user" | "ai";
@@ -16,9 +17,11 @@ export interface Message {
 interface ChatTrainerProps {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  solution: Partial<Solution>;
+  updateSolution: (updates: Partial<Solution>) => void;
 }
 
-export function ChatTrainer({ messages, setMessages }: ChatTrainerProps) {
+export function ChatTrainer({ messages, setMessages, solution, updateSolution }: ChatTrainerProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -41,24 +44,31 @@ export function ChatTrainer({ messages, setMessages }: ChatTrainerProps) {
     if (input.trim() === "" || isLoading) return;
 
     const userMessage: Message = { sender: "user", text: input };
-    setMessages((prev) => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setInput("");
     setIsLoading(true);
 
     try {
-      const trainingContext = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
+      const trainingContext = newMessages.map(m => `${m.sender}: ${m.text}`).join('\n');
       const response = await refineSolution({
-          solutionId: "temp-solution",
+          currentInstructions: solution.systemInstructions,
           userInput: input,
           trainingContext: trainingContext,
+          modelOutputStructure: solution.modelOutputStructure ?? 'No structure defined yet.',
       });
 
-      // For this demo, we'll use a canned response as the flow is a placeholder.
-      const aiResponse: Message = { sender: "ai", text: `Got it. I will focus on: "${input}". Is there anything else?` };
-      setMessages((prev) => [...prev, aiResponse]);
+      if (response) {
+          updateSolution({ systemInstructions: response.updatedSystemInstructions });
+          const aiResponse: Message = { sender: "ai", text: response.aiResponse };
+          setMessages((prev) => [...prev, aiResponse]);
+      } else {
+          throw new Error("AI did not return a valid response.");
+      }
+
     } catch (error) {
       console.error("Error refining solution:", error);
-      const errorResponse: Message = { sender: "ai", text: "Sorry, I had trouble understanding that. Could you rephrase?" };
+      const errorResponse: Message = { sender: "ai", text: "Sorry, I had trouble processing that. Could you try again?" };
       setMessages((prev) => [...prev, errorResponse]);
     } finally {
         setIsLoading(false);

@@ -26,10 +26,12 @@ MagicBox is a crowdsourced AI platform where creators train specialized document
 
 ### Application Structure
 
-**3 Core Pages:**
-- `/` - Landing/Marketplace (browse solutions + social proof)
-- `/create` - Creator Studio (4-step solution training process)
+**Core Pages:**
+- `/` - Landing/Marketplace (unified marketplace with search/filter functionality)
+- `/create` - Creator Studio (4-step solution training process, requires authentication)
 - `/use/[slug]` - Solution Processor (instant document processing)
+
+**Note**: The `/browse` route was removed and functionality merged into the landing page for a simplified user experience.
 
 **3 Core Components:**
 - `FileUploader` - Drag/drop with preview
@@ -39,21 +41,21 @@ MagicBox is a crowdsourced AI platform where creators train specialized document
 ### Technical Stack
 
 - **Frontend**: Next.js 15 with TypeScript, App Router
-- **AI Integration**: Google Genkit with Gemini 1.5 Flash
+- **AI Integration**: Llama API client with Llama 3.2 models
 - **UI Framework**: shadcn/ui with Tailwind CSS
 - **Data Layer**: Mock data system (ready for database integration)
 
 ### AI Flows
 
-AI flows are defined using Google Genkit and handle document processing:
-- `extract-application-data.ts` - Extracts structured data from rental applications
-- `categorize-receipts.ts` - Categorizes business receipts for tax purposes  
-- `refine-solution-flow.ts` - Refines and improves existing solutions
+AI flows use Llama API client and handle document processing:
+- `generate-output-schema.ts` - Generates Zod schemas from natural language descriptions
+- `process-document-flow.ts` - Processes documents based on dynamic instructions and output schemas
+- `refine-solution-flow.ts` - Refines and improves existing solutions based on user feedback
 
 Each flow follows the pattern:
-1. Define input/output schemas with Zod
-2. Create a prompt template with AI context
-3. Define the flow logic using Genkit's `defineFlow`
+1. Define TypeScript interfaces for input/output
+2. Create comprehensive prompts for Llama models
+3. Handle API calls with error handling and fallbacks
 
 ### Data Models
 
@@ -71,10 +73,21 @@ The main data model is the `Solution` interface in `src/lib/data.ts`:
 
 ### User Authentication Strategy
 
-- **Guest Users**: Can browse and use solutions, temporary results
-- **Logged-in Users**: Can create solutions, save results, rate solutions
-- Login required for: creating solutions, rating, permanent result storage
-- Optional login prompts after successful usage
+**Current Implementation:**
+- **Authentication Context**: React Context API (`/src/lib/auth.tsx`) with localStorage persistence
+- **Login Modal**: Tabbed interface (`/src/components/login-modal.tsx`) with login/signup forms and demo account
+- **Protected Routes**: `/create` page requires authentication with loading states
+- **Header Integration**: Shows user avatar/dropdown when authenticated, login button when not
+
+**User Access:**
+- **Guest Users**: Can browse marketplace and use solutions
+- **Logged-in Users**: Can create solutions, with persistent login state
+- **Demo Account**: Available for quick testing (demo@example.com / password)
+
+**Authentication Flow:**
+- Login required for: creating solutions
+- Mock authentication system ready for backend integration
+- Persistent sessions via localStorage
 
 ### Key UI Components
 
@@ -82,13 +95,32 @@ The main data model is the `Solution` interface in `src/lib/data.ts`:
 - `ChatTrainer`: Conversational AI training interface with message history and real-time responses
 - `ResultsViewer`: Structured output display with export functionality
 - `SolutionCard`: Marketplace solution display with usage stats and ratings
-- `Header`: Navigation with branding and action buttons
+- `Header`: Navigation with user authentication state, shows user avatar when logged in
 - `Footer`: Site footer component
+- `LoginModal`: Authentication modal with login/signup tabs and demo account access
+
+### Authentication Components
+
+- `AuthProvider`: React Context provider for authentication state management
+- `LoginModal`: Modal component with tabbed login/signup interface
+- Protected page components with authentication guards and loading states
 
 ## Development Notes
 
-- AI flows require Google AI API configuration via environment variables
-- Authentication system ready for OAuth integration (Google, email/password)
-- Export functionality planned for CSV, PDF, and JSON formats
-- Component styling follows shadcn/ui patterns with Tailwind utility classes
-- TypeScript is strictly enforced with `yarn typecheck`
+- **AI Integration**: Requires `LLAMA_API_KEY` environment variable (see `.env.example`)
+- **Authentication**: React Context system ready for backend integration
+- **Export functionality**: Planned for CSV, PDF, and JSON formats
+- **Styling**: shadcn/ui patterns with Tailwind utility classes
+- **TypeScript**: Strictly enforced with `yarn typecheck`
+- **SSR**: Hydration issues resolved with deterministic data generation
+- **Navigation**: Unified marketplace experience on landing page
+
+## Recent Changes
+
+- **AI Provider Migration**: Switched from Google Genkit to Llama API client for better reliability
+- **Simplified AI Flows**: Replaced complex Genkit flows with direct Llama API calls
+- **Authentication System**: Full implementation with React Context, login modal, and protected routes
+- **Route Consolidation**: Merged `/browse` functionality into landing page (`/`)
+- **UI Simplification**: Removed hero/featured sections, focused on marketplace functionality
+- **Hydration Fixes**: Replaced random username generation with static deterministic usernames
+- **Fixed "Next: Train AI" Button**: Resolved API integration issues and form validation

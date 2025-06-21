@@ -3215,6 +3215,11 @@ lines-and-columns@^1.1.6:
   resolved "https://registry.yarnpkg.com/lines-and-columns/-/lines-and-columns-1.2.4.tgz#eca284f75d2965079309dc0ad9255abb2ebc1632"
   integrity sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==
 
+llama-api-client@^0.1.1:
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/llama-api-client/-/llama-api-client-0.1.1.tgz#c9388131a28c9ec164b66d4781462c85a3527a32"
+  integrity sha512-fM7+UkNXoZHye4rdOlGE5ym+BMN82IllayenWWPI3I0wJyg42wCHOP6oQb6mvb1kKejYYJQ1YykPzD+hKFabXg==
+
 lockfile@^1.0.4:
   version "1.0.4"
   resolved "https://registry.yarnpkg.com/lockfile/-/lockfile-1.0.4.tgz#07f819d25ae48f87e538e6578b6964a4981a5609"
