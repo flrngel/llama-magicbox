@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { useAuth } from "@/lib/auth";
+import { LoginModal } from "@/components/login-modal";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
@@ -13,15 +15,23 @@ import { ChatTrainer, Message } from "@/components/chat-trainer";
 import { ResultsViewer } from "@/components/results-viewer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle, Share2, Sparkles } from "lucide-react";
+import { ArrowLeft, CheckCircle, Share2, Sparkles, Lock } from "lucide-react";
 
 export default function CreatePage() {
+  const { user, isLoading } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [step, setStep] = useState(1);
   const [solutionName, setSolutionName] = useState("");
   const [problemDescription, setProblemDescription] = useState("");
   const [targetUsers, setTargetUsers] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      setShowLoginModal(true);
+    }
+  }, [user, isLoading]);
 
   const progress = (step / 4) * 100;
   
@@ -30,6 +40,45 @@ export default function CreatePage() {
 
   const handleNext = () => setStep((s) => s + 1);
   const handleBack = () => setStep((s) => s - 1);
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p>Loading...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Show login prompt if user is not authenticated
+  if (!user) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto p-6">
+            <Lock className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
+            <h1 className="text-2xl font-bold mb-4 font-headline">Sign In Required</h1>
+            <p className="text-muted-foreground mb-6">
+              You need to be signed in to create AI solutions. Join our community of creators!
+            </p>
+            <Button onClick={() => setShowLoginModal(true)} className="w-full">
+              Sign In to Create
+            </Button>
+          </div>
+        </main>
+        <Footer />
+        <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -124,13 +173,13 @@ export default function CreatePage() {
                 <Card className="text-left mb-8 shadow-lg">
                     <CardHeader>
                         <CardTitle className="font-headline">{solutionName}</CardTitle>
-                        <CardDescription>by a new creator</CardDescription>
+                        <CardDescription>by {user.name}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <p className="text-sm text-muted-foreground">{problemDescription}</p>
                         <div className="mt-4 p-2 bg-muted rounded-md">
                             <p className="text-sm font-mono break-all">
-                                docucraft.ai/use/{solutionName.toLowerCase().replace(/\s+/g, '-')}
+                                magicbox.ai/use/{solutionName.toLowerCase().replace(/\s+/g, '-')}
                             </p>
                         </div>
                     </CardContent>
