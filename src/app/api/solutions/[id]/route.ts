@@ -13,11 +13,12 @@ function ensureInitialized() {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     ensureInitialized();
-    const solution = getSolutionById(params.id);
+    const { id } = await params;
+    const solution = getSolutionById(id);
     
     if (!solution) {
       return NextResponse.json({ error: 'Solution not found' }, { status: 404 });

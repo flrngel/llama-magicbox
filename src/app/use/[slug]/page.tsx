@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { fetchSolutionBySlug } from "@/lib/data-client";
 import { Solution } from "@/lib/data";
 import { notFound as nextNotFound } from "next/navigation";
@@ -18,7 +18,8 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-export default function UseSolutionPage({ params }: { params: { slug: string } }) {
+export default function UseSolutionPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = use(params);
   const [solution, setSolution] = useState<Solution | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -26,7 +27,7 @@ export default function UseSolutionPage({ params }: { params: { slug: string } }
   useEffect(() => {
     async function loadSolution() {
       try {
-        const data = await fetchSolutionBySlug(params.slug);
+        const data = await fetchSolutionBySlug(resolvedParams.slug);
         setSolution(data);
       } catch (error) {
         console.error('Failed to load solution:', error);
@@ -36,7 +37,7 @@ export default function UseSolutionPage({ params }: { params: { slug: string } }
       }
     }
     loadSolution();
-  }, [params.slug]);
+  }, [resolvedParams.slug]);
 
   if (loading) {
     return (

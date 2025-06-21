@@ -4,11 +4,12 @@ import { ensureInitialized } from '@/lib/database';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     ensureInitialized();
-    const solution = getSolutionBySlug(params.slug);
+    const { slug } = await params;
+    const solution = getSolutionBySlug(slug);
     
     if (!solution) {
       return NextResponse.json({ error: 'Solution not found' }, { status: 404 });
