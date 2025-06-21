@@ -1,5 +1,9 @@
-import { getSolutionBySlug } from "@/lib/data";
-import { notFound } from "next/navigation";
+"use client";
+
+import { useState, useEffect } from "react";
+import { fetchSolutionBySlug } from "@/lib/data-client";
+import { Solution } from "@/lib/data";
+import { notFound as nextNotFound } from "next/navigation";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { UseSolutionForm } from "./_components/use-solution-form";
@@ -15,10 +19,56 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default function UseSolutionPage({ params }: { params: { slug: string } }) {
-  const solution = getSolutionBySlug(params.slug);
+  const [solution, setSolution] = useState<Solution | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
-  if (!solution) {
-    notFound();
+  useEffect(() => {
+    async function loadSolution() {
+      try {
+        const data = await fetchSolutionBySlug(params.slug);
+        setSolution(data);
+      } catch (error) {
+        console.error('Failed to load solution:', error);
+        setNotFound(true);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadSolution();
+  }, [params.slug]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p>Loading solution...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (notFound || !solution) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Solution Not Found</h1>
+            <p className="text-muted-foreground mb-4">The solution you're looking for doesn't exist.</p>
+            <Button asChild>
+              <Link href="/">Back to Marketplace</Link>
+            </Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
   }
 
   return (

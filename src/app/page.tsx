@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,12 +13,28 @@ import {
 import { SolutionCard } from "@/components/solution-card";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
-import { getSolutions, getCategories, Solution } from "@/lib/data";
+import { fetchSolutions, getCategories } from "@/lib/data-client";
+import { Solution } from "@/lib/data";
 import { Search } from "lucide-react";
 
 export default function Home() {
-  const [solutions] = useState<Solution[]>(getSolutions());
+  const [solutions, setSolutions] = useState<Solution[]>([]);
   const [categories] = useState<string[]>(getCategories());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadSolutions() {
+      try {
+        const data = await fetchSolutions();
+        setSolutions(data);
+      } catch (error) {
+        console.error('Failed to load solutions:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadSolutions();
+  }, []);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
@@ -78,13 +94,20 @@ export default function Home() {
           </div>
 
           {/* Solutions Grid */}
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredSolutions.map((solution) => (
-              <SolutionCard key={solution.id} solution={solution} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="text-center py-16">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading solutions...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredSolutions.map((solution) => (
+                <SolutionCard key={solution.id} solution={solution} />
+              ))}
+            </div>
+          )}
           
-          {filteredSolutions.length === 0 && (
+          {!loading && filteredSolutions.length === 0 && (
             <div className="text-center py-16 text-muted-foreground">
               <p>No solutions found. Try adjusting your search or filters.</p>
             </div>

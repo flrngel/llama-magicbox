@@ -16,7 +16,8 @@ import { ResultsViewer } from "@/components/results-viewer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle, Share2, Sparkles, Lock, Loader2 } from "lucide-react";
-import { Solution, DataItem, publishSolutionWithDataItems } from "@/lib/data";
+import { Solution, DataItem } from "@/lib/data";
+import { createSolution } from "@/lib/data-client";
 import { useToast } from "@/hooks/use-toast";
 import { generateOutputSchema } from "@/ai/flows/generate-output-schema";
 import { processDocument } from "@/ai/flows/process-document-flow";
@@ -95,22 +96,32 @@ export default function CreatePage() {
     setTrainingData(prev => [...prev, ...newDataItems]);
   };
 
-  const handlePublish = () => {
-    const finalSolutionData = {
+  const handlePublish = async () => {
+    try {
+      const finalSolutionData = {
         name: newSolution.name!,
         description: newSolution.description!,
         problemDescription: newSolution.description!,
         targetUsers: newSolution.targetUsers!,
         creatorId: newSolution.creatorId!,
         creator: newSolution.creator!,
-        category: newSolution.category || 'Personal Organization',
+        category: (newSolution.category || 'Personal Organization') as Solution['category'],
         systemInstructions: newSolution.systemInstructions!,
         modelOutputStructure: newSolution.modelOutputStructure!,
-    };
-    const published = publishSolutionWithDataItems(finalSolutionData, trainingData);
-    updateSolution({ slug: published.slug }); // save slug for final page
-    toast({ title: "Solution Published!", description: `${newSolution.name} is now live.` });
-    setStep(s => s + 1);
+      };
+      
+      const published = await createSolution({
+        solutionData: finalSolutionData,
+        dataItemsData: trainingData,
+      });
+      
+      updateSolution({ slug: published.slug }); // save slug for final page
+      toast({ title: "Solution Published!", description: `${newSolution.name} is now live.` });
+      setStep(s => s + 1);
+    } catch (error) {
+      console.error('Error publishing solution:', error);
+      toast({ title: "Publication Failed", description: "Failed to publish solution. Please try again.", variant: "destructive" });
+    }
   };
   
   const handleStep1Next = async () => {

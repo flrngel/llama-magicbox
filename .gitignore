@@ -40,6 +40,9 @@ next-env.d.ts
 .genkit/*
 .env*
 
+# database
+magicbox.db
+
 # firebase
 firebase-debug.log
 firestore-debug.log# Created by https://www.toptal.com/developers/gitignore/api/macos
