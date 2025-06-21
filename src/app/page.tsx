@@ -1,75 +1,95 @@
-import Link from "next/link";
+"use client";
+
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SolutionCard } from "@/components/solution-card";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
-import { getSolutions } from "@/lib/data";
+import { getSolutions, getCategories, Solution } from "@/lib/data";
+import { Search } from "lucide-react";
 
 export default function Home() {
-  const featuredSolutions = getSolutions().slice(0, 4);
+  const [solutions] = useState<Solution[]>(getSolutions());
+  const [categories] = useState<string[]>(getCategories());
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+
+  const filteredSolutions = useMemo(() => {
+    return solutions.filter((solution) => {
+      const matchesSearch =
+        solution.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        solution.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory =
+        selectedCategory === "All" || solution.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [solutions, searchTerm, selectedCategory]);
 
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1">
-        <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48">
-          <div className="container px-4 md:px-6">
-            <div className="grid gap-6 lg:grid-cols-1 lg:gap-12 xl:grid-cols-2">
-              <div className="flex flex-col justify-center space-y-4">
-                <div className="space-y-2">
-                  <h1 className="font-headline text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none text-primary">
-                    Turn Your Expertise Into AI Solutions
-                  </h1>
-                  <p className="max-w-[600px] text-muted-foreground md:text-xl">
-                    Train AI with your documents. Share solutions instantly. No code required.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button asChild size="lg">
-                    <Link href="/create">Create Solution</Link>
-                  </Button>
-                  <Button asChild variant="secondary" size="lg">
-                    <Link href="/browse">Browse Solutions</Link>
-                  </Button>
-                </div>
-                <div className="text-sm text-muted-foreground pt-4">
-                  <p><strong>127</strong> solutions created, <strong>2,349</strong> documents processed</p>
-                </div>
-              </div>
-              <div className="hidden xl:flex items-center justify-center">
-                 <img
-                  src="https://placehold.co/600x400.png"
-                  alt="Demo GIF"
-                  data-ai-hint="data analysis"
-                  className="rounded-xl shadow-2xl"
-                />
-              </div>
-            </div>
+        <div className="container px-4 md:px-6 py-8">
+          {/* Page Header */}
+          <div className="space-y-4 mb-8">
+            <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl font-headline">
+              Solution Marketplace
+            </h1>
+            <p className="text-muted-foreground md:text-xl/relaxed">
+              Discover and use AI solutions built by experts in the community.
+            </p>
           </div>
-        </section>
+          
+          {/* Search and Filter */}
+          <div className="flex flex-col md:flex-row gap-4 mb-8">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                placeholder="Search solutions..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Select
+              value={selectedCategory}
+              onValueChange={(value) => setSelectedCategory(value)}
+            >
+              <SelectTrigger className="w-full md:w-[200px]">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Categories</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        <section id="solutions" className="w-full py-12 md:py-24 lg:py-32 bg-muted/40">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Featured Solutions</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  Get started instantly with our pre-built solutions for common document processing tasks.
-                </p>
-              </div>
-            </div>
-            <div className="mx-auto grid grid-cols-1 gap-6 py-12 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {featuredSolutions.map((solution) => (
-                <SolutionCard key={solution.id} solution={solution} />
-              ))}
-            </div>
-            <div className="flex justify-center">
-              <Button asChild variant="link" size="lg">
-                <Link href="/browse">View All Solutions →</Link>
-              </Button>
-            </div>
+          {/* Solutions Grid */}
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredSolutions.map((solution) => (
+              <SolutionCard key={solution.id} solution={solution} />
+            ))}
           </div>
-        </section>
+          
+          {filteredSolutions.length === 0 && (
+            <div className="text-center py-16 text-muted-foreground">
+              <p>No solutions found. Try adjusting your search or filters.</p>
+            </div>
+          )}
+        </div>
       </main>
       <Footer />
     </div>

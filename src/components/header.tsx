@@ -41,9 +41,6 @@ export function Header() {
           <Button asChild>
             <Link href="/create">Create Solution</Link>
           </Button>
-          <Button variant="outline" asChild>
-            <Link href="/browse">Browse Solutions</Link>
-          </Button>
           
           {user ? (
             <DropdownMenu>

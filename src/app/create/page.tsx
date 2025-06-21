@@ -186,7 +186,7 @@ export default function CreatePage() {
                 </Card>
                 <div className="flex justify-center gap-4">
                     <Button variant="outline" asChild>
-                      <Link href="/browse">View in Marketplace</Link>
+                      <Link href="/">View in Marketplace</Link>
                     </Button>
                     <Button onClick={() => setStep(1)}>Create Another</Button>
                     <Button>

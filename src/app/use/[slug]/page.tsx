@@ -27,7 +27,7 @@ export default function UseSolutionPage({ params }: { params: { slug: string } }
       <main className="flex-1">
         <div className="container mx-auto max-w-4xl py-12 px-4">
             <Button variant="ghost" asChild className="mb-4">
-                <Link href="/browse">
+                <Link href="/">
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back to Marketplace
                 </Link>

@@ -12,18 +12,12 @@ export interface Solution {
   targetUsers: string;
 }
 
-const generateUsername = () => {
-  const adjectives = ["Agile", "Bright", "Clever", "Dandy", "Eager", "Fancy", "Great", "Happy"];
-  const nouns = ["Panda", "Tiger", "Lion", "Eagle", "Shark", "Wolf", "Bear", "Fox"];
-  return `${adjectives[Math.floor(Math.random() * adjectives.length)]}${nouns[Math.floor(Math.random() * nouns.length)]}${Math.floor(Math.random() * 90 + 10)}`;
-};
-
 const solutions: Solution[] = [
   {
     id: "1",
     slug: "tax-receipt-organizer",
     name: "Tax Receipt Organizer",
-    creator: `by ${generateUsername()}`,
+    creator: "by CleverPanda42",
     description: "Categorize business receipts for tax filing.",
     usageCount: 47,
     rating: 4.5,
@@ -41,7 +35,7 @@ const solutions: Solution[] = [
     id: "2",
     slug: "medical-bill-analyzer",
     name: "Medical Bill Analyzer",
-    creator: `by ${generateUsername()}`,
+    creator: "by BrightTiger73",
     description: "Break down complex medical bills and check coverage.",
     usageCount: 23,
     rating: 4.8,
@@ -60,7 +54,7 @@ const solutions: Solution[] = [
     id: "3",
     slug: "rental-application-extractor",
     name: "Rental Application Extractor",
-    creator: `by ${generateUsername()}`,
+    creator: "by AgileEagle91",
     description: "Extract applicant info from rental forms.",
     usageCount: 89,
     rating: 4.2,
@@ -78,7 +72,7 @@ const solutions: Solution[] = [
     id: "4",
     slug: "invoice-data-entry",
     name: "Invoice Data Entry",
-    creator: `by ${generateUsername()}`,
+    creator: "by FancyWolf28",
     description: "Automate data entry from invoices into CSV.",
     usageCount: 112,
     rating: 4.6,
@@ -96,7 +90,7 @@ const solutions: Solution[] = [
     id: "5",
     slug: "business-card-scanner",
     name: "Business Card Scanner",
-    creator: `by ${generateUsername()}`,
+    creator: "by EagerBear56",
     description: "Digitize contact information from business cards.",
     usageCount: 76,
     rating: 4.9,
@@ -115,7 +109,7 @@ const solutions: Solution[] = [
     id: "6",
     slug: "legal-document-summarizer",
     name: "Legal Document Summarizer",
-    creator: `by ${generateUsername()}`,
+    creator: "by GreatFox84",
     description: "Get key points and summaries from legal texts.",
     usageCount: 34,
     rating: 4.1,
