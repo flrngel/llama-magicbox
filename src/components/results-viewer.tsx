@@ -209,7 +209,7 @@ function StructuredListRenderer({ items }: { items: Record<string, any>[] }) {
         <TableHeader>
           <TableRow>
             {headers.map(header => (
-              <TableHead key={header} className="align-top">
+              <TableHead key={header} className="text-center align-middle">
                 {formatFieldName(header)}
               </TableHead>
             ))}
