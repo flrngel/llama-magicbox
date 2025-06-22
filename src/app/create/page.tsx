@@ -413,9 +413,9 @@ function CreatePageContent() {
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1">
-        <div className="container mx-auto max-w-4xl py-12 px-4">
+        <div className="container px-4 md:px-6 py-8">
           <Progress value={progress} className="mb-8" />
-          {step > 1 && step < 4 && (<Button variant="ghost" onClick={handleBack} className="mb-4"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>)}
+          {step === 3 && (<Button variant="ghost" onClick={handleBack} className="mb-4"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>)}
           {step === 1 && (
             <Card className="max-w-xl mx-auto">
               <CardHeader>
