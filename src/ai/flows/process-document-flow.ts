@@ -49,36 +49,32 @@ export async function processDocument(
   input: ProcessDocumentInput
 ): Promise<ProcessDocumentOutput> {
   try {
-    // Always use vision-based processing for all document types
-    const prompt = `You are an expert document processing AI that extracts structured data from images and documents.
+    // Create proper system message with instructions
+    const systemMessage = `You are an expert document processing AI that extracts structured data from images and documents.
 
-**CRITICAL INSTRUCTIONS:**
-1. Analyze the image/document carefully to extract all visible information
-2. Extract information according to the System Instructions below
-3. Return a JSON object that EXACTLY matches the required schema structure
-4. Ensure all field names and types match the schema precisely
-5. Use null for missing values unless the schema specifies defaults
-
-**System Instructions:**
+CORE INSTRUCTIONS:
 ${input.systemInstructions}
 
-**Required Output Schema:**
-${input.modelOutputStructure}
-
-**RESPONSE FORMAT:**
-- Return ONLY a valid JSON object
-- No explanations, markdown, or additional text
-- Ensure the JSON matches the schema exactly
+TECHNICAL REQUIREMENTS:
+- Analyze the provided image/document carefully to extract all visible information
+- Return a JSON object that EXACTLY matches the required schema structure
+- Ensure all field names and types match the schema precisely
+- Use null for missing values unless the schema specifies defaults
+- Return ONLY a valid JSON object (no explanations, markdown, or additional text)
 - All string values should be properly quoted
 - Use appropriate data types (string, number, boolean, null)
 
-JSON Response:`;
+REQUIRED OUTPUT SCHEMA:
+${input.modelOutputStructure}`;
+
+    // User message just contains the document to process
+    const userPrompt = "Please analyze this document and extract the information according to the system instructions. Return only valid JSON.";
 
     // debug
-    console.log('modelOutputStructure', input.modelOutputStructure);
+    console.log('systemInstructions being used:', input.systemInstructions);
 
     const userContent: MessageContent = [
-      { type: 'text', text: prompt },
+      { type: 'text', text: userPrompt },
       { type: 'image_url', image_url: { url: input.fileDataUri } }
     ];
 
@@ -104,7 +100,7 @@ JSON Response:`;
     }
 
     const llamaResponse = await callLlama([
-      { role: 'system', content: 'You are a data extraction expert that returns valid JSON objects only.' },
+      { role: 'system', content: systemMessage },
       { role: 'user', content: userContent }
     ], 'Llama-4-Maverick-17B-128E-Instruct-FP8', llamaOptions);
 

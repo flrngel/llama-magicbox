@@ -66,13 +66,9 @@ export async function callLlama(
     }
 
     // debug
-    console.log('requestParams', requestParams);
-    console.log('messages', messages);
+    console.dir(requestParams, { depth: null });
 
     const response = await llamaClient.chat.completions.create(requestParams);
-
-    // debug
-    console.log('response', response);
     
     // Ensure we return a string
     const content = response.completion_message?.content;

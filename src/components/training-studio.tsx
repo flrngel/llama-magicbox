@@ -39,6 +39,11 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
   const [overallConfidence, setOverallConfidence] = useState(0);
   const { toast } = useToast();
 
+  // Debug: Monitor solution changes
+  useEffect(() => {
+    console.log('TrainingStudio solution.systemInstructions:', solution.systemInstructions);
+  }, [solution.systemInstructions]);
+
   // Calculate overall confidence and training progress
   useEffect(() => {
     const approvedDocuments = trainingDocuments.filter(doc => doc.status === 'approved');
@@ -74,6 +79,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
 
         // Process document immediately
         try {
+          console.log('TrainingStudio processing new upload with instructions:', solution.systemInstructions);
           const result = await processDocument({
             fileDataUri: dataUri,
             systemInstructions: solution.systemInstructions || "Extract information from this document.",

@@ -23,6 +23,7 @@ import { TrainingDocument } from "./training-studio";
 import { Solution } from "@/lib/data";
 import { processDocument } from "@/ai/flows/process-document-flow";
 import { refineSolution } from "@/ai/flows/refine-solution-flow";
+import { updateSolutionAction } from "@/app/actions/update-solution";
 import { useToast } from "@/hooks/use-toast";
 
 interface TrainingSessionProps {
@@ -41,8 +42,17 @@ export function TrainingSession({
   const [chatInput, setChatInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isChatting, setIsChatting] = useState(false);
+  const [currentInstructions, setCurrentInstructions] = useState(solution.systemInstructions || "");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Update current instructions when solution changes
+  useEffect(() => {
+    if (solution.systemInstructions) {
+      setCurrentInstructions(solution.systemInstructions);
+      console.log('TrainingSession updated currentInstructions from solution prop:', solution.systemInstructions);
+    }
+  }, [solution.systemInstructions]);
 
   useEffect(() => {
     // Scroll to bottom when chat history changes
@@ -57,9 +67,11 @@ export function TrainingSession({
   const handleReprocess = async () => {
     setIsProcessing(true);
     try {
+      console.log('TrainingSession re-processing with currentInstructions:', currentInstructions);
+      console.log('TrainingSession solution.systemInstructions:', solution.systemInstructions);
       const result = await processDocument({
         fileDataUri: document.dataUri,
-        systemInstructions: solution.systemInstructions || "Extract information from this document.",
+        systemInstructions: currentInstructions || "Extract information from this document.",
         modelOutputStructure: solution.modelOutputStructure || "z.object({})",
       });
 
@@ -73,7 +85,7 @@ export function TrainingSession({
           ...document.chatHistory,
           {
             sender: 'ai',
-            message: `I've re-processed the document with the updated instructions. Here's the new output: ${JSON.stringify(result, null, 2)}`,
+            message: `I've re-processed the document with the updated instructions. You can see the new output in the AI Output section.`,
             timestamp: new Date()
           }
         ]
@@ -163,17 +175,40 @@ export function TrainingSession({
         .join('\n');
 
       const refinementResult = await refineSolution({
-        currentInstructions: solution.systemInstructions || "",
+        currentInstructions: currentInstructions || "",
         userInput: userMessage.message,
         trainingContext,
         modelOutputStructure: solution.modelOutputStructure || "z.object({})",
       });
 
       if (refinementResult) {
-        // Update global instructions
+        // Update current instructions state FIRST
+        const newInstructions = refinementResult.updatedSystemInstructions;
+        setCurrentInstructions(newInstructions);
+        
+        // Update global solution state
+        console.log('TrainingSession updating global solution with:', newInstructions);
         updateSolution({ 
-          systemInstructions: refinementResult.updatedSystemInstructions 
+          systemInstructions: newInstructions 
         });
+        
+        // Force immediate state sync by updating the solution prop used in re-processing
+        console.log('TrainingSession currentInstructions updated to:', newInstructions);
+
+        // Persist to database if solution has an ID
+        if (solution.id) {
+          try {
+            const result = await updateSolutionAction(solution.id, {
+              systemInstructions: refinementResult.updatedSystemInstructions
+            });
+            if (!result.success) {
+              console.error('Failed to persist instructions to database:', result.error);
+            }
+          } catch (error) {
+            console.error('Failed to persist instructions to database:', error);
+            // Still continue with the UI update
+          }
+        }
 
         // Add AI response
         const aiMessage = {

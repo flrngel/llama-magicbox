@@ -22,27 +22,38 @@ export async function refineSolution(
   input: RefineSolutionInput
 ): Promise<RefineSolutionOutput> {
   try {
-    const prompt = `You are an AI assistant that helps a user build a "System Instruction" prompt for another AI.
-The user wants to process documents and get a JSON output with this structure: ${input.modelOutputStructure}.
+    const prompt = `You are an AI training assistant helping a user refine instructions for document processing. 
 
-The user's conversation with you so far (the training context):
+CONTEXT:
+- User wants to process documents and get structured JSON output
+- Expected output structure: ${input.modelOutputStructure}
+- Current system instructions: "${input.currentInstructions || 'Extract information from documents as structured JSON.'}"
+
+CONVERSATION HISTORY:
 ${input.trainingContext || 'This is the beginning of our conversation.'}
 
-The current System Instruction is:
-"${input.currentInstructions || 'You are a helpful AI assistant. Extract information from the provided document based on the user\'s requirements and return it as a structured JSON object.'}"
-
-The user has just said:
+USER'S LATEST FEEDBACK:
 "${input.userInput}"
 
-Your tasks:
-1. Synthesize a new, improved "System Instruction". It should incorporate the user's latest feedback. The instruction must be a complete, self-contained prompt for another AI. It should tell the AI to extract information from a document and format it as JSON according to the user's desired structure.
-2. Provide a short, conversational response to the user confirming you've understood their request.
+YOUR TASKS:
+1. Create improved system instructions that incorporate the user's feedback
+2. Provide a helpful, conversational response (DO NOT include the actual structured output or repeat the data - the user can already see that)
 
-Example:
-If the user says "focus on the total amount and vendor name", your response could be "Got it. I will update the instructions to focus on extracting the total amount and vendor name. Is there anything else?"
-Your new System Instruction would then be a comprehensive prompt that includes this new focus.
+IMPORTANT GUIDELINES FOR YOUR RESPONSE:
+- Be conversational and helpful
+- Focus on confirming what you learned from their feedback
+- Ask follow-up questions if needed
+- DO NOT repeat or show the JSON structure/data
+- DO NOT include technical details about the output format
+- Be concise and natural
 
-Generate the response as JSON with two fields: "updatedSystemInstructions" and "aiResponse".`;
+EXAMPLE:
+User: "Focus more on the vendor name and total amount"
+Good response: "Got it! I've updated the instructions to prioritize extracting vendor names and total amounts more accurately. Is there anything specific about how vendor names should be formatted?"
+
+Bad response: "I've updated the instructions. Here's the extracted data: {vendor: 'ABC Corp', amount: 150.00}..." 
+
+Return JSON with: {"updatedSystemInstructions": "...", "aiResponse": "..."}`;
 
     const response = await callLlama([
       { role: 'system', content: 'You are an expert at creating system prompts for AI assistants. Always return valid JSON.' },
