@@ -122,7 +122,13 @@ export function UseSolutionForm({ solution }: UseSolutionFormProps) {
       <Card>
         <CardHeader>
             <CardTitle>1. Upload Documents</CardTitle>
-            <CardDescription>Upload up to 10 documents to process with this solution. All files will be processed simultaneously for faster results.</CardDescription>
+            <CardDescription>
+              Upload up to 10 documents to process with this solution. All files will be processed simultaneously for faster results.
+              <br />
+              <span className="text-xs text-muted-foreground mt-1 block">
+                Supports 40+ file formats including PDF, Office docs, images, audio files. Maximum 30MB per file.
+              </span>
+            </CardDescription>
         </CardHeader>
         <CardContent>
             <FileUploader onUpload={setFiles} maxFiles={10} multiple={true} />

@@ -19,7 +19,7 @@ interface FileUploaderProps {
 export function FileUploader({
   onUpload,
   maxFiles = 5,
-  maxSize = 10,
+  maxSize = 30,
   accept = { 
     // Images (all types for OCR and metadata)
     'image/*': [],

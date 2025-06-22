@@ -69,7 +69,7 @@ Imagine a tax professional who spends hours organizing receipts for clients. Now
 - **🔒 Enterprise Security**: Isolated Python environments for document processing
 
 ### Technical Innovation
-- **Multi-format support**: 40+ file types including Office docs, audio transcription, ZIP archives
+- **Multi-format support**: 40+ file types including Office docs, audio transcription, ZIP archives (up to 30MB each)
 - **Conversational training**: AI learns through natural dialogue with experts
 - **Real-time processing**: Documents processed in seconds, not hours
 - **Scalable architecture**: Handle thousands of concurrent users

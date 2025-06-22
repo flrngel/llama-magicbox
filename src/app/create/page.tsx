@@ -475,6 +475,9 @@ function CreatePageContent() {
                 <CardContent className="p-6 space-y-6">
                   <div>
                     <h3 className="font-bold mb-2">Upload a test document</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Upload a sample document to test your solution. Maximum 30MB file size.
+                    </p>
                     <FileUploader 
                       key={solutionId || 'new-solution'} 
                       onUpload={setTestFile} 

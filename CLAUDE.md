@@ -210,4 +210,4 @@ Each flow follows the pattern:
 - **Rating System**: Complete 5-star rating system with comments and database integration
 - **ResultsViewer Enhancement**: Clean table-only view with formatted/raw JSON tabs
 - **Multiple File Support**: Parallel document processing with individual result views
-- **Markitdown Integration**: Universal document processing for 40+ file formats
+- **Markitdown Integration**: Universal document processing for 40+ file formats with 30MB file size limit

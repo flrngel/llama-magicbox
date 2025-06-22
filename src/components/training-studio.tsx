@@ -477,7 +477,13 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Training Documents</CardTitle>
-              <CardDescription>Upload and train with example documents</CardDescription>
+              <CardDescription>
+                Upload and train with example documents
+                <br />
+                <span className="text-xs text-muted-foreground mt-1 block">
+                  Upload up to 5 training files. Supports all major formats: PDF, Office docs, images, audio. Max 30MB per file.
+                </span>
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {isLoadingExistingData && (
