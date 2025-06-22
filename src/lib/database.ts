@@ -309,6 +309,7 @@ function getStatements() {
         UPDATE data_items SET model_output = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `),
+      deleteDataItem: database.prepare('DELETE FROM data_items WHERE id = ?'),
 
       // Ratings
       insertRating: database.prepare(`

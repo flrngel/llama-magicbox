@@ -105,3 +105,23 @@ export async function updateDataItemAction(
     };
   }
 }
+
+// Delete a data item
+export async function deleteDataItemAction(dataItemId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    ensureInitialized();
+    const statements = getStatements();
+    
+    statements.deleteDataItem.run(dataItemId);
+    
+    return {
+      success: true
+    };
+  } catch (error) {
+    console.error('Error deleting data item:', error);
+    return {
+      success: false,
+      error: 'Failed to delete training data'
+    };
+  }
+}

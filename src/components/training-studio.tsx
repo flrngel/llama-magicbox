@@ -11,7 +11,7 @@ import { ArrowLeft, CheckCircle, AlertCircle, Clock, Plus, X } from "lucide-reac
 import { Solution, DataItem } from "@/lib/data";
 import { processDocument } from "@/ai/flows/process-document-flow";
 import { useToast } from "@/hooks/use-toast";
-import { getDataItemsAction, createDataItemAction } from "@/app/actions/data-item-actions";
+import { getDataItemsAction, createDataItemAction, deleteDataItemAction } from "@/app/actions/data-item-actions";
 // MarkitdownService is server-side only, we use the API endpoint instead
 
 // Helper function to determine file type for database storage
@@ -124,17 +124,53 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
         // Convert DataItems to TrainingDocuments
         const existingDocuments: TrainingDocument[] = await Promise.all(
           result.data.map(async (dataItem: DataItem) => {
-            // Create a placeholder File object since we can't reconstruct the original file
-            const fileName = `training-doc-${dataItem.id.split('-').pop()}.txt`;
-            const fileContent = `Training document from previous session\nOriginal URI: ${dataItem.content_uri}`;
-            const file = new File([fileContent], fileName, { type: 'text/plain' });
+            // Extract original filename from guided_prompt if available
+            let fileName = `training-doc-${dataItem.id.split('-').pop()}.txt`;
+            const guidedPrompt = dataItem.guided_prompt || '';
+            
+            // Check if guided_prompt contains filename in format "filename:xyz|..."
+            if (guidedPrompt.startsWith('filename:')) {
+              const filenameMatch = guidedPrompt.match(/^filename:([^|]+)\|/);
+              if (filenameMatch && filenameMatch[1]) {
+                fileName = filenameMatch[1];
+              }
+            } else if (guidedPrompt.includes('Training document: ')) {
+              // Fallback: try to extract from old format "Training document: filename"
+              const match = guidedPrompt.match(/Training document: (.+)$/);
+              if (match && match[1]) {
+                fileName = match[1];
+              }
+            }
+            
+            // Determine the correct MIME type based on the stored type and filename
+            let mimeType = 'text/plain';
+            if (dataItem.type === 'image') {
+              // Try to infer image type from filename extension
+              const ext = fileName.toLowerCase().split('.').pop();
+              if (ext === 'png') mimeType = 'image/png';
+              else if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
+              else if (ext === 'gif') mimeType = 'image/gif';
+              else if (ext === 'webp') mimeType = 'image/webp';
+              else mimeType = 'image/jpeg'; // default for images
+            } else if (dataItem.type === 'pdf') {
+              mimeType = 'application/pdf';
+            } else if (dataItem.type === 'csv') {
+              mimeType = 'text/csv';
+            }
+            
+            // For images, we can create an empty file since we have the dataUri
+            // For other types, include a placeholder content
+            const fileContent = dataItem.type === 'image' 
+              ? '' 
+              : `Training document from previous session\nOriginal URI: ${dataItem.content_uri}`;
+            const file = new File([fileContent], fileName, { type: mimeType });
             
             return {
               id: `existing-${dataItem.id}`,
               file,
               dataUri: dataItem.content_uri,
               isImage: dataItem.type === 'image',
-              processedContent: dataItem.type !== 'image' ? 'Previously processed content' : undefined,
+              processedContent: dataItem.type !== 'image' ? dataItem.content_uri : undefined,
               dataItemId: dataItem.id,
               status: 'approved' as const, // Mark existing training as approved
               aiOutput: dataItem.model_output,
@@ -288,11 +324,12 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
           const fileType = determineFileType(file);
 
           // Save to database with processed content
+          // Include filename in guided_prompt for later retrieval
           const saveResult = await createDataItemAction(
             solution.id!,
             fileType,
             contentForAI, // Store the processed content
-            `Training document: ${file.name}`, // guided_prompt
+            `filename:${file.name}|Training document: ${file.name}`, // Include filename for parsing
             result // model_output
           );
 
@@ -372,7 +409,34 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
     return await response.json();
   };
 
-  const handleDeleteDocument = (documentId: string) => {
+  const handleDeleteDocument = async (documentId: string) => {
+    // Find the document to get its dataItemId if it exists
+    const documentToDelete = trainingDocuments.find(doc => doc.id === documentId);
+    
+    // Delete from database if it has a dataItemId
+    if (documentToDelete?.dataItemId) {
+      try {
+        const deleteResult = await deleteDataItemAction(documentToDelete.dataItemId);
+        if (!deleteResult.success) {
+          toast({
+            title: "Delete Failed",
+            description: deleteResult.error || "Failed to delete from database",
+            variant: "destructive"
+          });
+          return; // Don't remove from UI if database delete failed
+        }
+      } catch (error) {
+        console.error('Error deleting data item:', error);
+        toast({
+          title: "Delete Failed", 
+          description: "Failed to delete training document from database",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
+    // Remove from local state
     setTrainingDocuments(prev => prev.filter(doc => doc.id !== documentId));
     
     // If the deleted document was selected, clear selection
@@ -382,7 +446,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
     
     toast({ 
       title: "Document Removed", 
-      description: "Training document has been removed from the session."
+      description: "Training document has been removed successfully."
     });
   };
 
