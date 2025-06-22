@@ -8,6 +8,7 @@ import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import { Separator } from "./ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { 
   Bot, 
   User, 
@@ -17,13 +18,16 @@ import {
   ThumbsUp, 
   ThumbsDown,
   FileText,
-  Sparkles
+  Sparkles,
+  Code,
+  Eye
 } from "lucide-react";
 import { TrainingDocument } from "./training-studio";
 import { Solution } from "@/lib/data";
 import { processDocument } from "@/ai/flows/process-document-flow";
 import { refineSolution } from "@/ai/flows/refine-solution-flow";
 import { useToast } from "@/hooks/use-toast";
+import { ResultsViewer } from "./results-viewer";
 
 interface TrainingSessionProps {
   document: TrainingDocument;
@@ -391,9 +395,28 @@ export function TrainingSession({
                   <p>AI is processing...</p>
                 </div>
               ) : document.aiOutput ? (
-                <pre className="text-sm bg-muted p-4 rounded-lg overflow-auto max-h-60">
-                  {JSON.stringify(document.aiOutput, null, 2)}
-                </pre>
+                <Tabs defaultValue="formatted" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="formatted" className="flex items-center gap-2">
+                      <Eye className="w-4 h-4" />
+                      Formatted
+                    </TabsTrigger>
+                    <TabsTrigger value="raw" className="flex items-center gap-2">
+                      <Code className="w-4 h-4" />
+                      Raw JSON
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="formatted" className="mt-4">
+                    <div className="max-h-60 overflow-auto">
+                      <ResultsViewer data={document.aiOutput} format="auto" />
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="raw" className="mt-4">
+                    <pre className="text-sm bg-muted p-4 rounded-lg overflow-auto max-h-60">
+                      {JSON.stringify(document.aiOutput, null, 2)}
+                    </pre>
+                  </TabsContent>
+                </Tabs>
               ) : (
                 <div className="text-center text-muted-foreground py-8">
                   <p>No output available</p>
