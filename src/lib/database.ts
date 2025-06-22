@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import { User, Solution, DataItem } from './data';
+import { User, Solution, DataItem, Rating } from './data';
 
 // Database file path
 const dbPath = path.join(process.cwd(), 'magicbox.db');
@@ -151,6 +151,22 @@ function createTables() {
     );
   `);
 
+  // Ratings table
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS ratings (
+      id TEXT PRIMARY KEY,
+      solution_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+      comment TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (solution_id) REFERENCES solutions (id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users (id),
+      UNIQUE(solution_id, user_id) -- One rating per user per solution
+    );
+  `);
+
   // Create indexes for better performance
   database.exec(`
     CREATE INDEX IF NOT EXISTS idx_solutions_creator_id ON solutions(creator_id);
@@ -158,6 +174,8 @@ function createTables() {
     CREATE INDEX IF NOT EXISTS idx_solutions_slug ON solutions(slug);
     CREATE INDEX IF NOT EXISTS idx_solutions_status ON solutions(status);
     CREATE INDEX IF NOT EXISTS idx_data_items_solution_id ON data_items(solution_id);
+    CREATE INDEX IF NOT EXISTS idx_ratings_solution_id ON ratings(solution_id);
+    CREATE INDEX IF NOT EXISTS idx_ratings_user_id ON ratings(user_id);
   `);
 }
 
@@ -225,6 +243,17 @@ function getStatements() {
         UPDATE data_items SET model_output = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `),
+
+      // Ratings
+      insertRating: database.prepare(`
+        INSERT OR REPLACE INTO ratings (id, solution_id, user_id, rating, comment)
+        VALUES (?, ?, ?, ?, ?)
+      `),
+      getRatingsBySolutionId: database.prepare('SELECT * FROM ratings WHERE solution_id = ?'),
+      getRatingByUserAndSolution: database.prepare('SELECT * FROM ratings WHERE user_id = ? AND solution_id = ?'),
+      updateSolutionRating: database.prepare(`
+        UPDATE solutions SET rating = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      `),
     };
   }
   return statements;
@@ -272,6 +301,18 @@ function rowToUser(row: any): User {
     name: row.name,
     email: row.email,
     avatar: row.avatar,
+  };
+}
+
+function rowToRating(row: any): Rating {
+  return {
+    id: row.id,
+    solutionId: row.solution_id,
+    userId: row.user_id,
+    rating: row.rating,
+    comment: row.comment,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
   };
 }
 
@@ -435,4 +476,4 @@ function ensureInitialized() {
   }
 }
 
-export { getDatabase, getStatements, rowToSolution, rowToDataItem, rowToUser, initializeDatabase, ensureInitialized };
+export { getDatabase, getStatements, rowToSolution, rowToDataItem, rowToUser, rowToRating, initializeDatabase, ensureInitialized };

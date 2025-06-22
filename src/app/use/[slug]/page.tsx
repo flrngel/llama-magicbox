@@ -18,6 +18,7 @@ import {
 import { ArrowLeft, Edit } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { RatingStats } from "@/components/rating-stats";
 
 export default function UseSolutionPage({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = use(params);
@@ -94,16 +95,19 @@ export default function UseSolutionPage({ params }: { params: Promise<{ slug: st
                   <p className="text-muted-foreground md:text-xl/relaxed mt-4">
                     {solution.problemDescription}
                   </p>
-                  <p className="text-sm text-muted-foreground mt-2">Created {solution.creator}</p>
+                  <p className="text-sm text-muted-foreground mt-4">Created {solution.creator}</p>
                 </div>
-                {user && user.id === solution.creatorId && (
-                  <Button asChild variant="outline" className="ml-4">
-                    <Link href={`/create?edit=${solution.id}`}>
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit Solution
-                    </Link>
-                  </Button>
-                )}
+                <div className="flex flex-col gap-2 ml-4">
+                  <RatingStats solutionId={solution.id} usageCount={solution.usageCount} />
+                  {user && user.id === solution.creatorId && (
+                    <Button asChild variant="outline">
+                      <Link href={`/create?edit=${solution.id}`}>
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit Solution
+                      </Link>
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
             

@@ -70,6 +70,7 @@ Each flow follows the pattern:
 - `users` - User accounts with id, name, email, avatar
 - `solutions` - AI solutions with metadata, status (draft/published), and training data
 - `data_items` - Training examples linked to solutions with file content and AI outputs
+- `ratings` - User ratings and feedback for solutions (1-5 stars with optional comments)
 
 **Key Features:**
 - Draft solution support for creator workflow
@@ -85,6 +86,7 @@ Each flow follows the pattern:
 - `GET /api/solutions/[id]` - Fetch solution by ID
 - `GET /api/solutions/my?creatorId=X` - Fetch solutions by creator
 - `GET /api/solutions/slug/[slug]` - Fetch solution by slug
+- `GET /api/ratings/[solutionId]` - Fetch ratings and comments for a solution
 
 **Data Operations** (`/src/lib/db-operations.ts`):
 - User CRUD operations with email uniqueness
@@ -103,6 +105,7 @@ Each flow follows the pattern:
 - `Solution` - Complete solution with metadata, training data, and status
 - `DataItem` - Training examples with file content and model outputs
 - `User` - User accounts with authentication data
+- `Rating` - User ratings with stars (1-5) and optional feedback comments
 
 **Solution Lifecycle:**
 - Draft solutions for creator workflow
@@ -126,20 +129,50 @@ Each flow follows the pattern:
 
 **User Access:**
 - **Guest Users**: Can browse marketplace and use solutions
-- **Logged-in Users**: Can create solutions, with persistent login state
+- **Logged-in Users**: Can create solutions and rate solutions, with persistent login state
 - **Demo Account**: Available for quick testing (demo@example.com / password)
 
 **Authentication Flow:**
-- Login required for: creating solutions
+- Login required for: creating solutions, rating solutions
 - Mock authentication system ready for backend integration
 - Persistent sessions via localStorage
+
+### Rating System
+
+**Features:**
+- **5-Star Rating**: Simple 1-5 star rating system with descriptive labels
+- **Optional Comments**: Users can provide detailed feedback (max 500 characters)
+- **One Rating Per User**: Users can update their rating but only have one per solution
+- **Real-time Updates**: Solution average ratings update immediately
+- **Rating Statistics**: Track rating distribution and calculate averages
+- **Interactive Stats Display**: Clickable rating stats show detailed modal with all reviews
+- **Anonymous Reviews**: Generated usernames protect user identity while showing feedback
+- **Rating Distribution**: Visual breakdown of 1-5 star ratings with progress bars
+- **Creator Insights**: Solution creators can see rating breakdowns and feedback
+
+**Rating Policy:**
+- Only authenticated users can rate solutions
+- Must successfully process documents to access rating
+- Users cannot rate their own solutions
+- Ratings are anonymous to solution creators with generated usernames
+- Comments are filtered for spam and inappropriate content
+- Users can view detailed ratings and statistics for any solution
+
+**Database Integration:**
+- Ratings stored in dedicated `ratings` table
+- Automatic average calculation and solution rating updates
+- Unique constraint prevents duplicate ratings per user/solution
+- Soft validation with CHECK constraints for rating values (1-5)
 
 ### Key UI Components
 
 - `FileUploader`: Drag/drop interface with file validation, preview thumbnails, and progress tracking
 - `ChatTrainer`: Conversational AI training interface with message history and real-time responses
-- `ResultsViewer`: Structured output display with export functionality
+- `ResultsViewer`: Structured output display with clean table formatting and optional raw JSON view
 - `SolutionCard`: Marketplace solution display with usage stats and ratings
+- `SolutionRating`: 5-star rating component with optional comments for solution feedback
+- `RatingStats`: Interactive rating statistics display with clickable modal for detailed reviews
+- `RatingsModal`: Detailed view of all ratings with user feedback, rating distribution, and statistics
 - `Header`: Navigation with user authentication state, shows user avatar when logged in
 - `Footer`: Site footer component
 - `LoginModal`: Authentication modal with login/signup tabs and demo account access
@@ -174,3 +207,7 @@ Each flow follows the pattern:
 - **Hydration Fixes**: Replaced random username generation with static deterministic usernames
 - **Fixed "Next: Train AI" Button**: Resolved API integration issues and form validation
 - **Solution Drafts**: Added draft/published status workflow for creators
+- **Rating System**: Complete 5-star rating system with comments and database integration
+- **ResultsViewer Enhancement**: Clean table-only view with formatted/raw JSON tabs
+- **Multiple File Support**: Parallel document processing with individual result views
+- **Markitdown Integration**: Universal document processing for 40+ file formats

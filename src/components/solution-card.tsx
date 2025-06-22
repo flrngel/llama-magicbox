@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Star, Users } from "lucide-react";
+import { RatingStatsInline } from "./rating-stats";
 
 interface SolutionCardProps {
   solution: Solution;
@@ -38,16 +39,11 @@ export function SolutionCard({ solution }: SolutionCardProps) {
         )}
       </CardContent>
       <CardFooter className="flex justify-between items-center">
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Users className="w-4 h-4" />
-            <span>{solution.usageCount || 0}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Star className="w-4 h-4" />
-            <span>{solution.rating || 0}</span>
-          </div>
-        </div>
+        <RatingStatsInline 
+          solutionId={solution.id}
+          usageCount={solution.usageCount || 0}
+          rating={solution.rating || 0}
+        />
       </CardFooter>
     </Card>
   );

@@ -27,6 +27,23 @@ export interface DataItem {
 }
 
 /**
+ * Represents a user rating for a solution.
+ */
+export interface Rating {
+  id: string;
+  /** The ID of the solution being rated. */
+  solutionId: string;
+  /** The ID of the user who provided the rating. */
+  userId: string;
+  /** The star rating (1-5). */
+  rating: number;
+  /** Optional comment about the solution. */
+  comment?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
  * Represents a document processing solution created by a user.
  */
 export interface Solution {
@@ -80,3 +97,11 @@ export {
   createDataItem,
   updateDataItemModelOutput,
 } from './db-operations';
+
+// Re-export rating operations
+export {
+  createRating,
+  getRatingsBySolution,
+  getUserRatingForSolution,
+  getRatingStats,
+} from './rating-operations';

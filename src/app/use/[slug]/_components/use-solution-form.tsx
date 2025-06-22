@@ -5,8 +5,7 @@ import { Solution } from "@/lib/data";
 import { FileUploader } from "@/components/file-uploader";
 import { Button } from "@/components/ui/button";
 import { ResultsViewer } from "@/components/results-viewer";
-import { StarRating } from "@/components/star-rating";
-import { Textarea } from "@/components/ui/textarea";
+import { SolutionRating } from "@/components/solution-rating";
 import { processDocumentAction } from "../actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -215,17 +214,15 @@ export function UseSolutionForm({ solution }: UseSolutionFormProps) {
       )}
 
       {fileResults.some(fr => fr.result && !fr.isLoading) && (
-          <Card>
-            <CardHeader>
-                <CardTitle>3. Provide Feedback</CardTitle>
-                <CardDescription>Help improve this solution by rating your experience.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <StarRating />
-                <Textarea placeholder="Optional: Share your thoughts on the result quality... (max 100 chars)" maxLength={100} />
-                <Button>Submit Feedback</Button>
-            </CardContent>
-          </Card>
+          <SolutionRating 
+            solutionId={solution.id}
+            solutionName={solution.name}
+            creatorId={solution.creatorId}
+            onRatingSubmitted={(rating) => {
+              // Optional: Handle rating submission feedback
+              console.log('Rating submitted:', rating);
+            }}
+          />
       )}
     </div>
   );
