@@ -492,7 +492,7 @@ function CreatePageContent() {
                     ) : testError ? (
                         <div className="text-destructive p-4 border border-destructive rounded-md">{testError}</div>
                     ) : testResult ? (
-                        <ResultsViewer data={testResult} format="table" />
+                        <ResultsViewer data={testResult} format="auto" />
                     ) : (
                         <div className="text-center text-muted-foreground p-8">Awaiting test...</div>
                     )}
