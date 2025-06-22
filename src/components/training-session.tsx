@@ -28,12 +28,66 @@ import { processDocument } from "@/ai/flows/process-document-flow";
 import { refineSolution } from "@/ai/flows/refine-solution-flow";
 import { useToast } from "@/hooks/use-toast";
 import { ResultsViewer } from "./results-viewer";
+import { cn } from "@/lib/utils";
 
 interface TrainingSessionProps {
   document: TrainingDocument;
   solution: Solution;
   updateSolution: (updates: Partial<Solution>) => Promise<void>;
   onDocumentUpdate: (document: TrainingDocument) => void;
+}
+
+// Component to format AI messages in a user-friendly way
+function MessageContent({ message, sender }: { message: string; sender: 'user' | 'ai' }) {
+  if (sender === 'user') {
+    return <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{message}</p>;
+  }
+
+  // Check if message contains JSON output (objects or arrays)
+  const jsonMatch = message.match(/Here's what I extracted:\s*([\[{][\s\S]*?[\]}])\./);
+  if (jsonMatch) {
+    try {
+      const jsonData = JSON.parse(jsonMatch[1]);
+      const beforeJson = message.substring(0, message.indexOf(jsonMatch[0]));
+      const afterJson = message.substring(message.indexOf(jsonMatch[0]) + jsonMatch[0].length);
+      
+      return (
+        <div className="space-y-2">
+          <p className="whitespace-pre-wrap break-words">{beforeJson}Here's what I extracted:</p>
+          <div className="bg-background/50 rounded-md p-2 border">
+            <ResultsViewer data={jsonData} format="auto" />
+          </div>
+          <p className="whitespace-pre-wrap break-words">{afterJson}</p>
+        </div>
+      );
+    } catch (e) {
+      // If JSON parsing fails, show original message
+    }
+  }
+
+  // Check if message contains "Output:" followed by JSON (objects or arrays)
+  const outputMatch = message.match(/Output:\s*([\[{][\s\S]*[\]}])$/);
+  if (outputMatch) {
+    try {
+      const jsonData = JSON.parse(outputMatch[1]);
+      const beforeOutput = message.substring(0, message.indexOf(outputMatch[0]));
+      
+      return (
+        <div className="space-y-2">
+          {beforeOutput && <p className="whitespace-pre-wrap break-words">{beforeOutput}</p>}
+          <p className="font-medium">Output:</p>
+          <div className="bg-background/50 rounded-md p-2 border">
+            <ResultsViewer data={jsonData} format="auto" />
+          </div>
+        </div>
+      );
+    } catch (e) {
+      // If JSON parsing fails, show original message
+    }
+  }
+
+  // Default: show message as-is
+  return <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{message}</p>;
 }
 
 export function TrainingSession({ 
@@ -45,6 +99,7 @@ export function TrainingSession({
   const [chatInput, setChatInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isChatting, setIsChatting] = useState(false);
+  const [isAiTyping, setIsAiTyping] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -60,6 +115,7 @@ export function TrainingSession({
 
   const handleReprocess = async () => {
     setIsProcessing(true);
+    setIsAiTyping(true);
     try {
       // Always use the latest instructions from the solution state
       console.log('TrainingSession re-processing with solution.systemInstructions:', solution.systemInstructions);
@@ -79,14 +135,13 @@ export function TrainingSession({
           ...document.chatHistory,
           {
             sender: 'ai',
-            message: `I've re-processed the document with the updated instructions. You can see the new output in the AI Output section.`,
+            message: `I've re-processed the document with the updated instructions. Check the output above to see if it's better now.`,
             timestamp: new Date()
           }
         ]
       };
 
       onDocumentUpdate(updatedDocument);
-      toast({ title: "Document Re-processed", description: "The AI has analyzed the document again." });
     } catch (error) {
       console.error('Error reprocessing document:', error);
       toast({ 
@@ -96,6 +151,7 @@ export function TrainingSession({
       });
     } finally {
       setIsProcessing(false);
+      setIsAiTyping(false);
     }
   };
 
@@ -119,7 +175,6 @@ export function TrainingSession({
     };
 
     onDocumentUpdate(updatedDocument);
-    toast({ title: "Document Approved", description: "This training example has been approved." });
   };
 
   const handleNeedsWork = () => {
@@ -161,6 +216,7 @@ export function TrainingSession({
     onDocumentUpdate(updatedWithUserMessage);
     setChatInput("");
     setIsChatting(true);
+    setIsAiTyping(true);
 
     try {
       // Get AI response and updated instructions
@@ -203,11 +259,7 @@ export function TrainingSession({
           };
           
           onDocumentUpdate(followUpDocument);
-          
-          toast({ 
-            title: "Follow-up Question", 
-            description: "Please provide more details to help improve the instructions." 
-          });
+          setIsAiTyping(false);
         } else {
           // User feedback was clear - update instructions and reprocess
           console.log('Updating solution with new instructions:', newInstructions);
@@ -235,13 +287,14 @@ export function TrainingSession({
                   aiMessage,
                   {
                     sender: 'ai',
-                    message: `I've applied the updated instructions and reprocessed the document. You can see the improved output above.`,
+                    message: `I've updated my understanding and reprocessed the document. Please check if the output is better now.`,
                     timestamp: new Date()
                   }
                 ]
               };
 
               onDocumentUpdate(reprocessedDocument);
+              setIsAiTyping(false);
             } catch (error) {
               console.error('Error reprocessing with new instructions:', error);
               // If reprocessing fails, at least show the chat response
@@ -250,13 +303,9 @@ export function TrainingSession({
                 chatHistory: [...updatedWithUserMessage.chatHistory, aiMessage]
               };
               onDocumentUpdate(fallbackDocument);
+              setIsAiTyping(false);
             }
           }, 100);
-
-          toast({ 
-            title: "Instructions Updated", 
-            description: "I've learned from your feedback and updated the solution instructions." 
-          });
         }
       }
     } catch (error) {
@@ -273,6 +322,7 @@ export function TrainingSession({
       };
 
       onDocumentUpdate(errorDocument);
+      setIsAiTyping(false);
     } finally {
       setIsChatting(false);
     }
@@ -456,7 +506,7 @@ export function TrainingSession({
                           : 'bg-muted'
                       }`}
                     >
-                      <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{msg.message}</p>
+                      <MessageContent message={msg.message} sender={msg.sender} />
                       <span className="text-xs opacity-70 mt-1 block">
                         {msg.timestamp.toLocaleTimeString()}
                       </span>
@@ -471,7 +521,7 @@ export function TrainingSession({
                   </div>
                 ))}
                 
-                {isChatting && (
+                {isAiTyping && (
                   <div className="flex items-start gap-3 justify-start">
                     <Avatar className="w-8 h-8 flex-shrink-0">
                       <AvatarFallback>
@@ -480,9 +530,9 @@ export function TrainingSession({
                     </Avatar>
                     <div className="max-w-[calc(100%-3rem)] min-w-0 bg-muted p-3 rounded-lg">
                       <div className="flex items-center space-x-1">
-                        <span className="h-2 w-2 bg-foreground/50 rounded-full animate-pulse [animation-delay:-0.3s]"></span>
-                        <span className="h-2 w-2 bg-foreground/50 rounded-full animate-pulse [animation-delay:-0.15s]"></span>
-                        <span className="h-2 w-2 bg-foreground/50 rounded-full animate-pulse"></span>
+                        <span className="h-2 w-2 bg-foreground/50 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                        <span className="h-2 w-2 bg-foreground/50 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                        <span className="h-2 w-2 bg-foreground/50 rounded-full animate-bounce"></span>
                       </div>
                     </div>
                   </div>

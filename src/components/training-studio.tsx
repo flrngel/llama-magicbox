@@ -177,7 +177,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
               confidence: dataItem.model_output ? calculateConfidence(dataItem.model_output) : 0,
               chatHistory: [{
                 sender: 'ai' as const,
-                message: `This is a previously trained document. Output: ${JSON.stringify(dataItem.model_output, null, 2)}`,
+                message: `This document was used in previous training. You can review the output and make adjustments if needed.`,
                 timestamp: new Date(dataItem.createdAt)
               }]
             };
@@ -352,7 +352,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
                 dataItemId,
                 chatHistory: [{
                   sender: 'ai',
-                  message: `I've processed your ${fileIsImage ? 'image' : 'document'}. Here's what I extracted: ${JSON.stringify(result, null, 2)}. How did I do?`,
+                  message: `I've processed your ${fileIsImage ? 'image' : 'document'}. How does the output look? Let me know if I should extract anything differently.`,
                   timestamp: new Date()
                 }]
               } 
