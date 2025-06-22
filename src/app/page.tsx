@@ -37,9 +37,10 @@ export default function Home() {
   }, []);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [sortBy, setSortBy] = useState("newest");
 
   const filteredSolutions = useMemo(() => {
-    return solutions.filter((solution) => {
+    let filtered = solutions.filter((solution) => {
       const matchesSearch =
         solution.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         solution.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -47,7 +48,30 @@ export default function Home() {
         selectedCategory === "All" || solution.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [solutions, searchTerm, selectedCategory]);
+
+    // Apply sorting
+    switch (sortBy) {
+      case "newest":
+        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        break;
+      case "oldest":
+        filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        break;
+      case "popular":
+        filtered.sort((a, b) => b.usageCount - a.usageCount);
+        break;
+      case "rating":
+        filtered.sort((a, b) => b.rating - a.rating);
+        break;
+      case "name":
+        filtered.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      default:
+        break;
+    }
+
+    return filtered;
+  }, [solutions, searchTerm, selectedCategory, sortBy]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -64,7 +88,7 @@ export default function Home() {
             </p>
           </div>
           
-          {/* Search and Filter */}
+          {/* Search, Filter, and Sort */}
           <div className="flex flex-col md:flex-row gap-4 mb-8">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -89,6 +113,21 @@ export default function Home() {
                     {category}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={sortBy}
+              onValueChange={(value) => setSortBy(value)}
+            >
+              <SelectTrigger className="w-full md:w-[160px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="oldest">Oldest</SelectItem>
+                <SelectItem value="popular">Most Popular</SelectItem>
+                <SelectItem value="rating">Highest Rated</SelectItem>
+                <SelectItem value="name">Name (A-Z)</SelectItem>
               </SelectContent>
             </Select>
           </div>

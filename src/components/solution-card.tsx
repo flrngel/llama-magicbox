@@ -16,29 +16,53 @@ interface SolutionCardProps {
 }
 
 export function SolutionCard({ solution }: SolutionCardProps) {
-  return (
-    <Link href={`/use/${solution.slug}`}>
-      <Card className="flex flex-col h-full transition-all hover:shadow-lg hover:-translate-y-1 cursor-pointer">
-        <CardHeader>
-          <CardTitle className="font-headline tracking-tight truncate">{solution.name}</CardTitle>
-          <CardDescription className="truncate">{solution.creator}</CardDescription>
-        </CardHeader>
-        <CardContent className="flex-grow">
-          <p className="text-sm text-muted-foreground line-clamp-2">{solution.description}</p>
-        </CardContent>
-        <CardFooter className="flex justify-between items-center">
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Users className="w-4 h-4" />
-              <span>{solution.usageCount}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Star className="w-4 h-4" />
-              <span>{solution.rating}</span>
-            </div>
+  // For draft solutions, make them link to the edit page instead
+  const isDraft = solution.status === 'draft';
+  
+  const cardContent = (
+    <Card className={`flex flex-col h-full transition-all hover:shadow-lg hover:-translate-y-1 cursor-pointer ${isDraft ? 'border-orange-200' : ''}`}>
+      <CardHeader>
+        <CardTitle className="font-headline tracking-tight truncate">
+          {solution.name || 'Untitled Solution'}
+        </CardTitle>
+        <CardDescription className="truncate">
+          {solution.creator || 'Draft solution'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex-grow">
+        <p className="text-sm text-muted-foreground line-clamp-2">
+          {solution.description || 'No description yet'}
+        </p>
+        {isDraft && (
+          <p className="text-xs text-orange-600 mt-2 font-medium">Draft - Click to continue editing</p>
+        )}
+      </CardContent>
+      <CardFooter className="flex justify-between items-center">
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Users className="w-4 h-4" />
+            <span>{solution.usageCount || 0}</span>
           </div>
-        </CardFooter>
-      </Card>
+          <div className="flex items-center gap-1">
+            <Star className="w-4 h-4" />
+            <span>{solution.rating || 0}</span>
+          </div>
+        </div>
+      </CardFooter>
+    </Card>
+  );
+
+  // Link to edit page for drafts, use page for published solutions
+  const href = isDraft ? `/create?edit=${solution.id}` : `/use/${solution.slug}`;
+  
+  // Only wrap with Link if we have a valid destination
+  if (!href || (!isDraft && !solution.slug)) {
+    return cardContent;
+  }
+
+  return (
+    <Link href={href}>
+      {cardContent}
     </Link>
   );
 }

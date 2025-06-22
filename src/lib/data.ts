@@ -66,6 +66,7 @@ export interface Solution {
 // Re-export database operations
 export {
   getSolutions,
+  getSolutionsByCreator,
   getSolutionById,
   getSolutionBySlug,
   getCategories,

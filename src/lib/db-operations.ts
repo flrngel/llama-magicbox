@@ -33,6 +33,18 @@ export function getSolutions(): Solution[] {
   });
 }
 
+export function getSolutionsByCreator(creatorId: string): Solution[] {
+  const statements = getStatements();
+  const rows = statements.getSolutionsByCreator.all(creatorId);
+  return rows.map((row: any) => {
+    const solution = rowToSolution(row);
+    // Get training data items for this solution
+    const dataItems = getDataItemsForSolution(solution.id);
+    solution.trainingDataItems = dataItems.map(item => item.id);
+    return solution;
+  });
+}
+
 export function getSolutionById(id: string): Solution | undefined {
   const statements = getStatements();
   const row = statements.getSolutionById.get(id);

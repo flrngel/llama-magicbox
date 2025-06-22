@@ -6,6 +6,7 @@ import { Solution } from "@/lib/data";
 import { notFound as nextNotFound } from "next/navigation";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { useAuth } from "@/lib/auth";
 import { UseSolutionForm } from "./_components/use-solution-form";
 import {
   Card,
@@ -14,12 +15,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Edit } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default function UseSolutionPage({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = use(params);
+  const { user } = useAuth();
   const [solution, setSolution] = useState<Solution | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -84,13 +86,25 @@ export default function UseSolutionPage({ params }: { params: Promise<{ slug: st
                 </Link>
             </Button>
             <div className="space-y-4 mb-8">
-              <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl font-headline">
-                {solution.name}
-              </h1>
-              <p className="text-muted-foreground md:text-xl/relaxed">
-                {solution.problemDescription}
-              </p>
-              <p className="text-sm text-muted-foreground">Created {solution.creator}</p>
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl font-headline">
+                    {solution.name}
+                  </h1>
+                  <p className="text-muted-foreground md:text-xl/relaxed mt-4">
+                    {solution.problemDescription}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">Created {solution.creator}</p>
+                </div>
+                {user && user.id === solution.creatorId && (
+                  <Button asChild variant="outline" className="ml-4">
+                    <Link href={`/create?edit=${solution.id}`}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit Solution
+                    </Link>
+                  </Button>
+                )}
+              </div>
             </div>
             
             <UseSolutionForm solution={solution} />

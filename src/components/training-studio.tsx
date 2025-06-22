@@ -39,6 +39,28 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
   const [overallConfidence, setOverallConfidence] = useState(0);
   const { toast } = useToast();
 
+  // Check if this is an existing solution being edited (has system instructions or is published)
+  const isEditingExistingSolution = Boolean(solution.systemInstructions || solution.status === 'published');
+  const [hasShownEditNotice, setHasShownEditNotice] = useState(false);
+
+  // Clear training documents when solution changes (e.g., switching from edit to create mode)
+  useEffect(() => {
+    setTrainingDocuments([]);
+    setSelectedDocumentId(null);
+    setHasShownEditNotice(false);
+  }, [solution.id]);
+
+  // Show notice for editing existing solutions
+  useEffect(() => {
+    if (isEditingExistingSolution && !hasShownEditNotice) {
+      toast({
+        title: "Editing Existing Solution",
+        description: "Previous training documents aren't available in edit mode. You can upload new documents to continue training.",
+      });
+      setHasShownEditNotice(true);
+    }
+  }, [isEditingExistingSolution, hasShownEditNotice, toast]);
+
   // Debug: Monitor solution changes
   useEffect(() => {
     console.log('TrainingStudio solution.systemInstructions:', solution.systemInstructions);
@@ -204,7 +226,10 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
   const selectedDocument = trainingDocuments.find(doc => doc.id === selectedDocumentId);
   const approvedCount = trainingDocuments.filter(doc => doc.status === 'approved').length;
   const totalCount = trainingDocuments.length;
-  const isReadyToComplete = totalCount >= 2 && approvedCount >= 1 && overallConfidence >= 70;
+  // More lenient completion requirements for editing existing solutions
+  const isReadyToComplete = isEditingExistingSolution 
+    ? (totalCount === 0 || (totalCount >= 1 && approvedCount >= 1)) // Allow proceeding with existing training or at least 1 new approved doc
+    : (totalCount >= 2 && approvedCount >= 1 && overallConfidence >= 70); // Original requirements for new solutions
 
   return (
     <div className="space-y-6">
@@ -225,13 +250,21 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
         <CardHeader>
           <CardTitle className="text-lg">Training Progress</CardTitle>
           <CardDescription>
+            {isEditingExistingSolution && (
+              <span className="text-blue-600 font-medium">Editing existing solution • </span>
+            )}
             {approvedCount} of {totalCount} documents approved • {Math.round(overallConfidence)}% confidence
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Progress value={overallConfidence} className="mb-4" />
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Need at least 2 documents with 1+ approved</span>
+            <span>
+              {isEditingExistingSolution 
+                ? "Continue with current training or add new documents" 
+                : "Need at least 2 documents with 1+ approved"
+              }
+            </span>
             <span>{isReadyToComplete ? 'Ready for testing!' : 'Keep training...'}</span>
           </div>
         </CardContent>
@@ -246,6 +279,14 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
               <CardDescription>Upload and train with example documents</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {isEditingExistingSolution && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-sm text-blue-800">
+                    <strong>Note:</strong> Previous training documents from this solution aren't available. 
+                    Upload new documents to continue training or refine your AI.
+                  </p>
+                </div>
+              )}
               <FileUploader 
                 onUpload={handleFileUpload} 
                 maxFiles={5} 
@@ -346,7 +387,12 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
           onClick={onComplete}
           disabled={!isReadyToComplete}
         >
-          {isReadyToComplete ? 'Test Solution' : `Need ${Math.max(0, 2 - totalCount)} more documents`}
+          {isReadyToComplete 
+            ? 'Test Solution' 
+            : isEditingExistingSolution
+              ? 'Upload at least 1 document to continue'
+              : `Need ${Math.max(0, 2 - totalCount)} more documents`
+          }
         </Button>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { useAuth } from "@/lib/auth";
@@ -39,9 +40,11 @@ const getInitialSolutionState = (): Partial<Solution> => ({
   trainingDataItems: [],
 });
 
-export default function CreatePage() {
+function CreatePageContent() {
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const editSolutionId = searchParams.get('edit');
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [step, setStep] = useState(1);
   
@@ -65,9 +68,9 @@ export default function CreatePage() {
   const [testResult, setTestResult] = useState<any>(null);
   const [testError, setTestError] = useState<string | null>(null);
 
-  // Create draft solution when user is authenticated
-  const createDraftWhenReady = useCallback(async () => {
-    if (!user || solutionId || isCreatingDraft) return;
+  // Load existing solution for editing (only when editSolutionId is provided)
+  const loadExistingSolution = useCallback(async () => {
+    if (!user || !editSolutionId || solutionId || isCreatingDraft) return;
     
     setIsCreatingDraft(true);
     try {
@@ -78,6 +81,58 @@ export default function CreatePage() {
         return;
       }
       
+      // Load existing solution for editing
+      const solutionResult = await getSolutionAction(editSolutionId);
+      if (solutionResult.success) {
+        const solution = solutionResult.data!;
+        
+        // Check if user owns this solution
+        if (solution.creatorId !== user.id) {
+          toast({ title: "Access Denied", description: "You can only edit your own solutions", variant: "destructive" });
+          return;
+        }
+        
+        setSolutionId(editSolutionId);
+        setCurrentSolution(solution);
+        
+        // Load existing data into form
+        setFormData({
+          name: solution.name || "",
+          description: solution.description || "",
+          targetUsers: solution.targetUsers || ""
+        });
+        
+        // If solution has output structure, set the description field too
+        if (solution.modelOutputStructure) {
+          setOutputStructureDescription("Output structure already generated");
+        }
+        
+        toast({ title: "Solution Loaded", description: `Editing "${solution.name || 'Untitled Solution'}"` });
+      } else {
+        toast({ title: "Error", description: "Solution not found", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error('Error loading existing solution:', error);
+      toast({ title: "Error", description: "Failed to load solution", variant: "destructive" });
+    } finally {
+      setIsCreatingDraft(false);
+    }
+  }, [user, editSolutionId, solutionId, isCreatingDraft, toast]);
+
+  // Create draft solution (called when user clicks Next from step 1)
+  const createDraftWhenNeeded = useCallback(async () => {
+    if (!user || solutionId || isCreatingDraft) return null;
+    
+    setIsCreatingDraft(true);
+    try {
+      // First ensure user exists in database
+      const userResult = await createOrGetUser(user);
+      if (!userResult.success) {
+        toast({ title: "Error", description: "Failed to create user record", variant: "destructive" });
+        return null;
+      }
+      
+      // Create new draft solution
       const result = await createDraftSolution(user.id);
       if (result.success) {
         setSolutionId(result.data!.solutionId);
@@ -89,31 +144,30 @@ export default function CreatePage() {
         const solutionResult = await getSolutionAction(result.data!.solutionId);
         if (solutionResult.success) {
           setCurrentSolution(solutionResult.data!);
-          // Load existing data into form if available
-          setFormData({
-            name: solutionResult.data!.name || "",
-            description: solutionResult.data!.description || "",
-            targetUsers: solutionResult.data!.targetUsers || ""
-          });
+          return result.data!.solutionId;
         }
       } else {
         toast({ title: "Error", description: "Failed to create draft solution", variant: "destructive" });
+        return null;
       }
     } catch (error) {
-      console.error('Error creating draft:', error);
+      console.error('Error creating draft solution:', error);
       toast({ title: "Error", description: "Failed to create draft solution", variant: "destructive" });
+      return null;
     } finally {
       setIsCreatingDraft(false);
     }
+    return null;
   }, [user, solutionId, isCreatingDraft, toast]);
 
   useEffect(() => {
     if (!isLoading && !user) {
       setShowLoginModal(true);
-    } else if (!isLoading && user && !solutionId) {
-      createDraftWhenReady();
+    } else if (!isLoading && user && !solutionId && editSolutionId) {
+      // Only load existing solution if we're in edit mode
+      loadExistingSolution();
     }
-  }, [user, isLoading, solutionId, createDraftWhenReady]);
+  }, [user, isLoading, solutionId, editSolutionId, loadExistingSolution]);
 
   // Load form data when solution changes (e.g., returning to step 1)
   useEffect(() => {
@@ -125,6 +179,21 @@ export default function CreatePage() {
       });
     }
   }, [currentSolution]);
+
+  // Clear form data when switching from edit mode to create mode
+  useEffect(() => {
+    if (!editSolutionId && (currentSolution || solutionId)) {
+      // User navigated from edit mode to create mode - reset everything
+      setCurrentSolution(null);
+      setSolutionId(null);
+      setOutputStructureDescription("");
+      setFormData({ name: "", description: "", targetUsers: "" });
+      setTestFile([]);
+      setTestResult(null);
+      setTestError(null);
+      setStep(1);
+    }
+  }, [editSolutionId, currentSolution, solutionId]);
 
 
   const handlePublish = async () => {
@@ -160,36 +229,58 @@ export default function CreatePage() {
   };
   
   const handleStep1Next = async () => {
-    if (!isStep1Valid || !solutionId) {
+    // Basic form validation
+    if (formData.name.length === 0 || formData.description.length < 20 || 
+        (!outputStructureDescription || outputStructureDescription.length < 10) && !hasExistingOutputStructure) {
       return;
     }
     
     setIsGeneratingSchema(true);
     try {
-        // First update solution with local form data
-        await updateSolutionAction(solutionId, {
+        let currentSolutionId = solutionId;
+        
+        // Create draft if this is a new solution (not editing)
+        if (!currentSolutionId && !editSolutionId) {
+          currentSolutionId = await createDraftWhenNeeded();
+          if (!currentSolutionId) {
+            throw new Error("Failed to create draft solution");
+          }
+        }
+        
+        if (!currentSolutionId) {
+          throw new Error("No solution ID available");
+        }
+        
+        // Update solution with local form data
+        await updateSolutionAction(currentSolutionId, {
           name: formData.name,
           description: formData.description,
           targetUsers: formData.targetUsers
         });
         
-        // Generate schema
-        const result = await generateOutputSchema({ description: outputStructureDescription });
-        if (result && result.schema) {
-            await updateSolutionAction(solutionId, { modelOutputStructure: result.schema });
-            
-            // Reload solution
-            const updatedResult = await getSolutionAction(solutionId);
-            if (updatedResult.success) {
-              setCurrentSolution(updatedResult.data!);
-            }
-            
-            toast({ title: "Output Structure Generated", description: "The AI has created a data schema." });
-            setStep(s => s + 1);
-        } else { throw new Error("Failed to generate schema from AI."); }
+        // Generate schema only if we don't already have one or if user provided new description
+        if (!hasExistingOutputStructure || (outputStructureDescription && outputStructureDescription !== "Output structure already generated")) {
+          const result = await generateOutputSchema({ description: outputStructureDescription });
+          if (result && result.schema) {
+              await updateSolutionAction(currentSolutionId, { modelOutputStructure: result.schema });
+              toast({ title: "Output Structure Generated", description: "The AI has created a data schema." });
+          } else { 
+            throw new Error("Failed to generate schema from AI."); 
+          }
+        } else {
+          toast({ title: "Solution Updated", description: "Your solution details have been saved." });
+        }
+        
+        // Reload solution
+        const updatedResult = await getSolutionAction(currentSolutionId);
+        if (updatedResult.success) {
+          setCurrentSolution(updatedResult.data!);
+        }
+        
+        setStep(s => s + 1);
     } catch (error) {
-        console.error("Error generating schema:", error);
-        toast({ title: "Schema Generation Failed", description: "Please try rephrasing your description.", variant: "destructive" });
+        console.error("Error processing step 1:", error);
+        toast({ title: "Update Failed", description: "Please try again.", variant: "destructive" });
     } finally { setIsGeneratingSchema(false); }
   };
 
@@ -256,10 +347,7 @@ export default function CreatePage() {
     setTestResult(null);
     setTestError(null);
     setStep(1);
-    // Create new draft solution
-    if (user) {
-      await createDraftWhenReady();
-    }
+    // Don't create a draft here - wait for user to click Next on step 1
   };
 
   // Update solution helper function for training studio
@@ -295,8 +383,10 @@ export default function CreatePage() {
   }, [step, solutionId, refreshSolutionData]);
 
   const progress = (step / 4) * 100;
-  // Validate form using local state
-  const isStep1Valid = formData.name.length > 0 && formData.description.length >= 20 && outputStructureDescription.length > 10 && currentSolution !== null;
+  // Validate form using local state - if editing and already has output structure, don't require description
+  const hasExistingOutputStructure = currentSolution?.modelOutputStructure;
+  const isStep1Valid = formData.name.length > 0 && formData.description.length >= 20 && 
+    (outputStructureDescription.length > 10 || hasExistingOutputStructure);
   const isStep3Valid = testResult !== null;
   
   // Determine if this is an update or initial creation for button text
@@ -305,8 +395,8 @@ export default function CreatePage() {
 
   const handleBack = () => setStep((s) => s - 1);
 
-  if (isLoading || isCreatingDraft) {
-    return (<div className="flex flex-col min-h-screen"><Header /><main className="flex-1 flex items-center justify-center"><div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div><p>{isLoading ? 'Loading Creator Studio...' : 'Creating draft solution...'}</p></div></main><Footer /></div>);
+  if (isLoading) {
+    return (<div className="flex flex-col min-h-screen"><Header /><main className="flex-1 flex items-center justify-center"><div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div><p>Loading Creator Studio...</p></div></main><Footer /></div>);
   }
 
   if (!user) {
@@ -322,14 +412,45 @@ export default function CreatePage() {
           {step > 1 && step < 4 && (<Button variant="ghost" onClick={handleBack} className="mb-4"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>)}
           {step === 1 && (
             <Card className="max-w-xl mx-auto">
-              <CardHeader><CardTitle className="font-headline">1. Define Your Solution</CardTitle><CardDescription>What problem will your AI solve and what is the desired output?</CardDescription></CardHeader>
+              <CardHeader>
+                <CardTitle className="font-headline">
+                  1. {editSolutionId ? 'Edit Your Solution' : 'Define Your Solution'}
+                </CardTitle>
+                <CardDescription>What problem will your AI solve and what is the desired output?</CardDescription>
+              </CardHeader>
               <CardContent className="space-y-4">
                 {/* FIX: Removed `|| ''` as the initial state now guarantees these fields exist. */}
                 <div className="space-y-2"><Label htmlFor="solution-name">Solution Name</Label><Input id="solution-name" placeholder="e.g., Tax Receipt Organizer" value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} maxLength={50} required /></div>
                 <div className="space-y-2"><Label htmlFor="problem-description">Problem Description</Label><Textarea id="problem-description" placeholder="e.g., Categorize business receipts for tax filing..." value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} minLength={20} maxLength={200} required /></div>
                 <div className="space-y-2"><Label htmlFor="target-users">Target Users (Optional)</Label><Input id="target-users" placeholder="e.g., Small business owners, freelancers" value={formData.targetUsers} onChange={(e) => setFormData(prev => ({ ...prev, targetUsers: e.target.value }))} maxLength={100} /></div>
-                <div className="space-y-2"><Label htmlFor="model-output-description">Desired Output Fields</Label><Textarea id="model-output-description" placeholder="Describe the fields you want the AI to extract, e.g., 'vendor name, transaction date, total amount'" value={outputStructureDescription} onChange={(e) => setOutputStructureDescription(e.target.value)} minLength={10} required /><p className="text-xs text-muted-foreground">The AI will generate a technical format based on your description.</p></div>
-                <Button onClick={handleStep1Next} disabled={!isStep1Valid || isGeneratingSchema} className="w-full">{isGeneratingSchema ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating Structure...</>) : step1ButtonText}</Button>
+                <div className="space-y-2">
+                  <Label htmlFor="model-output-description">
+                    Desired Output Fields {hasExistingOutputStructure && "(Optional - structure already exists)"}
+                  </Label>
+                  <Textarea 
+                    id="model-output-description" 
+                    placeholder="Describe the fields you want the AI to extract, e.g., 'vendor name, transaction date, total amount'" 
+                    value={outputStructureDescription} 
+                    onChange={(e) => setOutputStructureDescription(e.target.value)} 
+                    minLength={hasExistingOutputStructure ? 0 : 10} 
+                    required={!hasExistingOutputStructure} 
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {hasExistingOutputStructure 
+                      ? "Leave blank to keep existing structure, or provide new description to regenerate."
+                      : "The AI will generate a technical format based on your description."
+                    }
+                  </p>
+                </div>
+                <Button onClick={handleStep1Next} disabled={!isStep1Valid || isGeneratingSchema || isCreatingDraft} className="w-full">
+                  {isGeneratingSchema ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating Structure...</>
+                  ) : isCreatingDraft ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating Solution...</>
+                  ) : (
+                    step1ButtonText
+                  )}
+                </Button>
               </CardContent>
             </Card>
           )}
@@ -341,14 +462,18 @@ export default function CreatePage() {
               onBack={handleBack}
             />
           )}
-          {step === 3 && (
+          {step === 3 && currentSolution && (
             <div>
               <h2 className="text-2xl font-bold mb-4 font-headline">3. Test Your Solution</h2>
               <Card>
                 <CardContent className="p-6 space-y-6">
                   <div>
                     <h3 className="font-bold mb-2">Upload a test document</h3>
-                    <FileUploader onUpload={setTestFile} maxFiles={1} />
+                    <FileUploader 
+                      key={solutionId || 'new-solution'} 
+                      onUpload={setTestFile} 
+                      maxFiles={1} 
+                    />
                     <Button onClick={handleRunTest} disabled={isTesting || testFile.length === 0} className="mt-4">
                       {isTesting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Run Test
@@ -397,5 +522,24 @@ export default function CreatePage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+export default function CreatePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p>Loading Creator Studio...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    }>
+      <CreatePageContent />
+    </Suspense>
   );
 }

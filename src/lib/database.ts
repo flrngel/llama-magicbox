@@ -191,6 +191,9 @@ function getStatements() {
       getDraftSolutionsByCreator: database.prepare(`
         SELECT * FROM solutions WHERE creator_id = ? AND status = 'draft' ORDER BY updated_at DESC
       `),
+      getSolutionsByCreator: database.prepare(`
+        SELECT * FROM solutions WHERE creator_id = ? ORDER BY updated_at DESC
+      `),
       getSolutionById: database.prepare('SELECT * FROM solutions WHERE id = ?'),
       getSolutionBySlug: database.prepare('SELECT * FROM solutions WHERE slug = ?'),
       updateSolution: database.prepare(`
