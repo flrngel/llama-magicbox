@@ -12,11 +12,76 @@ import { Solution, DataItem } from "@/lib/data";
 import { processDocument } from "@/ai/flows/process-document-flow";
 import { useToast } from "@/hooks/use-toast";
 import { getDataItemsAction, createDataItemAction } from "@/app/actions/data-item-actions";
+// MarkitdownService is server-side only, we use the API endpoint instead
+
+// Helper function to determine file type for database storage
+function determineFileType(file: File): DataItem['type'] {
+  const mimeType = file.type.toLowerCase();
+  const extension = file.name.toLowerCase().split('.').pop() || '';
+  
+  // Images
+  if (mimeType.startsWith('image/')) {
+    return 'image';
+  }
+  
+  // PDF
+  if (mimeType === 'application/pdf' || extension === 'pdf') {
+    return 'pdf';
+  }
+  
+  // CSV
+  if (mimeType === 'text/csv' || extension === 'csv') {
+    return 'csv';
+  }
+  
+  // Office Documents
+  if (mimeType.includes('msword') || 
+      mimeType.includes('officedocument.wordprocessingml') ||
+      mimeType.includes('officedocument.spreadsheetml') ||
+      mimeType.includes('officedocument.presentationml') ||
+      mimeType.includes('ms-excel') ||
+      mimeType.includes('ms-powerpoint') ||
+      mimeType.includes('opendocument') ||
+      ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp'].includes(extension)) {
+    return 'document';
+  }
+  
+  // Audio files
+  if (mimeType.startsWith('audio/') || 
+      ['mp3', 'wav', 'm4a', 'flac', 'aac', 'ogg', 'wma'].includes(extension)) {
+    return 'audio';
+  }
+  
+  // Archives
+  if (mimeType.includes('zip') || mimeType.includes('tar') || mimeType.includes('gzip') ||
+      ['zip', 'tar', 'gz', '7z', 'rar'].includes(extension)) {
+    return 'archive';
+  }
+  
+  // Email files
+  if (mimeType === 'message/rfc822' || mimeType.includes('ms-outlook') ||
+      ['eml', 'msg'].includes(extension)) {
+    return 'email';
+  }
+  
+  // Text-based files (default for most other files)
+  if (mimeType.startsWith('text/') || 
+      mimeType === 'application/json' ||
+      mimeType.includes('xml') ||
+      ['txt', 'md', 'json', 'xml', 'html', 'htm', 'rtf', 'py', 'js', 'ts', 'css', 'yaml', 'yml'].includes(extension)) {
+    return 'text';
+  }
+  
+  // Fallback for anything else
+  return 'other';
+}
 
 export interface TrainingDocument {
   id: string;
   file: File;
   dataUri: string;
+  processedContent?: string; // Markdown content for non-images
+  isImage: boolean;
   dataItemId?: string; // Link to database record
   status: 'processing' | 'ready' | 'approved' | 'needs_work';
   aiOutput?: any;
@@ -68,6 +133,8 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
               id: `existing-${dataItem.id}`,
               file,
               dataUri: dataItem.content_uri,
+              isImage: dataItem.type === 'image',
+              processedContent: dataItem.type !== 'image' ? 'Previously processed content' : undefined,
               dataItemId: dataItem.id,
               status: 'approved' as const, // Mark existing training as approved
               aiOutput: dataItem.model_output,
@@ -166,109 +233,143 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
     
     for (const file of newFiles) {
       const documentId = `doc-${Date.now()}-${Math.random()}`;
-      const reader = new FileReader();
+      const isImage = file.type.startsWith('image/');
       
-      reader.onload = async () => {
-        const dataUri = reader.result as string;
-        
-        // Create training document
-        const newDocument: TrainingDocument = {
-          id: documentId,
-          file,
-          dataUri,
-          status: 'processing',
-          chatHistory: [],
-        };
-
-        setTrainingDocuments(prev => [...prev, newDocument]);
-
-        // Process document immediately with latest instructions
-        try {
-          console.log('TrainingStudio processing new upload with instructions:', solution.systemInstructions);
-          const result = await processDocument({
-            fileDataUri: dataUri,
-            systemInstructions: solution.systemInstructions || "Extract information from this document.",
-            modelOutputStructure: solution.modelOutputStructure || "z.object({})",
-          });
-
-          // Save to database and update document with AI output
-          let dataItemId: string | undefined;
-          try {
-            // Determine file type based on MIME type
-            let fileType: DataItem['type'] = 'text';
-            if (file.type.startsWith('image/')) {
-              fileType = 'image';
-            } else if (file.type === 'application/pdf') {
-              fileType = 'pdf';
-            } else if (file.type === 'text/csv') {
-              fileType = 'csv';
-            }
-
-            // Save to database
-            const saveResult = await createDataItemAction(
-              solution.id!,
-              fileType,
-              dataUri, // Store the dataUri as content
-              `Training document: ${file.name}`, // guided_prompt
-              result // model_output
-            );
-
-            if (saveResult.success && saveResult.data) {
-              dataItemId = saveResult.data.id;
-            }
-          } catch (saveError) {
-            console.error('Error saving to database:', saveError);
-            // Continue even if save fails - user can still train locally
-          }
-
-          setTrainingDocuments(prev => prev.map(doc => 
-            doc.id === documentId 
-              ? { 
-                  ...doc, 
-                  status: 'ready', 
-                  aiOutput: result,
-                  confidence: calculateConfidence(result),
-                  dataItemId,
-                  chatHistory: [{
-                    sender: 'ai',
-                    message: `I've processed your document. Here's what I extracted: ${JSON.stringify(result, null, 2)}. How did I do?`,
-                    timestamp: new Date()
-                  }]
-                } 
-              : doc
-          ));
-
-          toast({ 
-            title: "Document Processed", 
-            description: `${file.name} has been analyzed by the AI${dataItemId ? ' and saved' : ''}.`
-          });
-
-        } catch (error) {
-          console.error('Error processing document:', error);
-          setTrainingDocuments(prev => prev.map(doc => 
-            doc.id === documentId 
-              ? { 
-                  ...doc, 
-                  status: 'needs_work',
-                  chatHistory: [{
-                    sender: 'ai',
-                    message: "I had trouble processing this document. Can you help me understand what to extract?",
-                    timestamp: new Date()
-                  }]
-                } 
-              : doc
-          ));
-
-          toast({ 
-            title: "Processing Error", 
-            description: `Failed to process ${file.name}. You can train the AI using the chat.`,
-            variant: "destructive"
-          });
-        }
+      // Create initial training document
+      const initialDocument: TrainingDocument = {
+        id: documentId,
+        file,
+        dataUri: '',
+        isImage,
+        status: 'processing',
+        chatHistory: [],
       };
 
-      reader.readAsDataURL(file);
+      setTrainingDocuments(prev => [...prev, initialDocument]);
+
+      try {
+        // Step 1: Process file via API
+        const processResult = await processFileViaAPI(file);
+        const { content: processedContent, isImage: fileIsImage } = processResult;
+        
+        let dataUri: string;
+        let contentForAI: string;
+
+        if (fileIsImage) {
+          // For images, the content is already a data URI
+          dataUri = processedContent;
+          contentForAI = dataUri;
+        } else {
+          // For other files, we have markdown content
+          dataUri = `data:text/markdown;base64,${btoa(processedContent)}`;
+          contentForAI = processedContent; // Use markdown content directly
+        }
+
+        // Step 2: Update document with processed content
+        setTrainingDocuments(prev => prev.map(doc => 
+          doc.id === documentId 
+            ? { ...doc, dataUri, processedContent, isImage: fileIsImage }
+            : doc
+        ));
+
+        // Step 3: Process with AI using the processed content
+        console.log('TrainingStudio processing new upload with instructions:', solution.systemInstructions);
+        
+        const result = await processDocument({
+          fileDataUri: contentForAI,
+          systemInstructions: solution.systemInstructions || "Extract information from this document.",
+          modelOutputStructure: solution.modelOutputStructure || "z.object({})",
+        });
+
+        // Step 4: Save to database and update document with AI output
+        let dataItemId: string | undefined;
+        try {
+          // Determine file type based on MIME type and extension
+          const fileType = determineFileType(file);
+
+          // Save to database with processed content
+          const saveResult = await createDataItemAction(
+            solution.id!,
+            fileType,
+            contentForAI, // Store the processed content
+            `Training document: ${file.name}`, // guided_prompt
+            result // model_output
+          );
+
+          if (saveResult.success && saveResult.data) {
+            dataItemId = saveResult.data.id;
+          }
+        } catch (saveError) {
+          console.error('Error saving to database:', saveError);
+          // Continue even if save fails - user can still train locally
+        }
+
+        // Step 5: Update document with final results
+        setTrainingDocuments(prev => prev.map(doc => 
+          doc.id === documentId 
+            ? { 
+                ...doc, 
+                status: 'ready', 
+                aiOutput: result,
+                confidence: calculateConfidence(result),
+                dataItemId,
+                chatHistory: [{
+                  sender: 'ai',
+                  message: `I've processed your ${fileIsImage ? 'image' : 'document'}. Here's what I extracted: ${JSON.stringify(result, null, 2)}. How did I do?`,
+                  timestamp: new Date()
+                }]
+              } 
+            : doc
+        ));
+
+        toast({ 
+          title: "Document Processed", 
+          description: `${file.name} has been analyzed by the AI${dataItemId ? ' and saved' : ''}.`
+        });
+
+        // No cleanup needed as API handles temporary file management
+
+      } catch (error) {
+        console.error('Error processing document:', error);
+        setTrainingDocuments(prev => prev.map(doc => 
+          doc.id === documentId 
+            ? { 
+                ...doc, 
+                status: 'needs_work',
+                chatHistory: [{
+                  sender: 'ai',
+                  message: `I had trouble processing this document. Can you help me understand what to extract?`,
+                  timestamp: new Date()
+                }]
+              } 
+            : doc
+        ));
+
+        toast({ 
+          title: "Processing Error", 
+          description: `Failed to process ${file.name}. You can train the AI using the chat.`,
+          variant: "destructive"
+        });
+      }
     }
+  };
+
+  // Helper function to process file via API
+  const processFileViaAPI = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch('/api/files/process', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.details || 'Failed to process file');
+    }
+    
+    return await response.json();
   };
 
   const handleDeleteDocument = (documentId: string) => {

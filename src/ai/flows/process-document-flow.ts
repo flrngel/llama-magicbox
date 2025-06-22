@@ -67,16 +67,30 @@ TECHNICAL REQUIREMENTS:
 REQUIRED OUTPUT SCHEMA:
 ${input.modelOutputStructure}`;
 
-    // User message just contains the document to process
-    const userPrompt = "Please analyze this document and extract the information according to the system instructions. Return only valid JSON.";
-
     // debug
     console.log('systemInstructions being used:', input.systemInstructions);
 
-    const userContent: MessageContent = [
-      { type: 'text', text: userPrompt },
-      { type: 'image_url', image_url: { url: input.fileDataUri } }
-    ];
+    // Determine if this is image content or text content
+    const isImageContent = isImageDataUri(input.fileDataUri);
+    
+    let userContent: MessageContent;
+    if (isImageContent) {
+      // For images, use image_url content
+      const userPrompt = "Please analyze this image and extract the information according to the system instructions. Return only valid JSON.";
+      userContent = [
+        { type: 'text', text: userPrompt },
+        { type: 'image_url', image_url: { url: input.fileDataUri } }
+      ];
+    } else {
+      // For text/markdown content, include it directly in the prompt
+      const userPrompt = `Please analyze this document content and extract the information according to the system instructions. Return only valid JSON.
+
+DOCUMENT CONTENT:
+${input.fileDataUri}`;
+      userContent = [
+        { type: 'text', text: userPrompt }
+      ];
+    }
 
     // Prepare options for Llama API call
     const llamaOptions: any = {

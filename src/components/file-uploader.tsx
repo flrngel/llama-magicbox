@@ -20,7 +20,47 @@ export function FileUploader({
   onUpload,
   maxFiles = 5,
   maxSize = 10,
-  accept = { 'image/jpeg': [], 'image/png': [], 'application/pdf': [], 'text/plain': [], 'text/csv': [] },
+  accept = { 
+    // Images (all types for OCR and metadata)
+    'image/*': [],
+    // Documents - PDF
+    'application/pdf': [],
+    // Documents - Microsoft Office (Legacy)
+    'application/msword': [], // .doc
+    'application/vnd.ms-excel': [], // .xls
+    'application/vnd.ms-powerpoint': [], // .ppt
+    // Documents - Microsoft Office (Modern)
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [], // .docx
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': [], // .xlsx
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': [], // .pptx
+    // Documents - OpenDocument
+    'application/vnd.oasis.opendocument.text': [], // .odt
+    'application/vnd.oasis.opendocument.spreadsheet': [], // .ods
+    'application/vnd.oasis.opendocument.presentation': [], // .odp
+    // Text formats
+    'text/*': [], // .txt, .csv, .tsv, .md, etc.
+    'application/json': [], // .json
+    'application/xml': [], // .xml
+    'text/xml': [], // .xml
+    'text/html': [], // .html
+    'text/csv': [], // .csv
+    'text/tab-separated-values': [], // .tsv
+    'text/markdown': [], // .md
+    // Rich Text Format
+    'application/rtf': [], // .rtf
+    // Audio files (for speech transcription)
+    'audio/*': [], // .mp3, .wav, .m4a, .flac, etc.
+    // Archives (ZIP files)
+    'application/zip': [], // .zip
+    'application/x-zip-compressed': [], // .zip
+    // Email formats
+    'message/rfc822': [], // .eml
+    'application/vnd.ms-outlook': [], // .msg
+    // Other common formats
+    'application/epub+zip': [], // .epub
+    'application/x-tar': [], // .tar
+    'application/gzip': [], // .gz
+  },
   multiple = false,
   existingFiles = [],
   onRemoveFile,
@@ -99,7 +139,7 @@ export function FileUploader({
           <p>Drag & drop some files here, or click to select files</p>
         )}
         <p className="text-xs text-muted-foreground mt-2">
-          Supported: PDF, JPG, PNG, TXT, CSV. Max {maxSize}MB per file.
+          Supported: PDF, Office docs, Images, Audio, ZIP, HTML, Text files, and more. Max {maxSize}MB per file.
         </p>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}

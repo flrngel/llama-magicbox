@@ -15,7 +15,7 @@ export interface DataItem {
   /** The ID of the Solution this item belongs to. */
   solutionId: string;
   /** The type of the uploaded data. */
-  type: 'image' | 'pdf' | 'text' | 'csv';
+  type: 'image' | 'pdf' | 'text' | 'csv' | 'document' | 'audio' | 'archive' | 'email' | 'other';
   /** The data URI of the uploaded file content. */
   content_uri: string;
   /** The instruction from the creator for this specific training example. */

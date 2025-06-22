@@ -43,6 +43,9 @@ next-env.d.ts
 # database
 magicbox.db
 
+# temporary files
+/temp/
+
 # firebase
 firebase-debug.log
 firestore-debug.log# Created by https://www.toptal.com/developers/gitignore/api/macos

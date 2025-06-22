@@ -141,7 +141,7 @@ function createTables() {
     CREATE TABLE IF NOT EXISTS data_items (
       id TEXT PRIMARY KEY,
       solution_id TEXT NOT NULL,
-      type TEXT NOT NULL CHECK (type IN ('image', 'pdf', 'text', 'csv')),
+      type TEXT NOT NULL CHECK (type IN ('image', 'pdf', 'text', 'csv', 'document', 'audio', 'archive', 'email', 'other')),
       content_uri TEXT NOT NULL,
       guided_prompt TEXT NOT NULL,
       model_output TEXT, -- JSON string

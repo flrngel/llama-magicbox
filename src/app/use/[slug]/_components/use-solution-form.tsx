@@ -32,28 +32,53 @@ export function UseSolutionForm({ solution }: UseSolutionFormProps) {
     setError(null);
     setResults(null);
 
-    const file = files[0];
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-      const fileDataUri = reader.result as string;
+    try {
+      const file = files[0];
       
+      // Step 1: Process file via markitdown API (same as training flow)
       const formData = new FormData();
-      formData.append('fileDataUri', fileDataUri);
-      formData.append('solutionId', solution.id);
+      formData.append('file', file);
+      
+      const processResponse = await fetch('/api/files/process', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!processResponse.ok) {
+        const errorData = await processResponse.json();
+        throw new Error(errorData.details || 'Failed to process file');
+      }
+      
+      const processResult = await processResponse.json();
+      const { content, isImage } = processResult;
+      
+      // Step 2: Use processed content for AI processing
+      let contentForAI: string;
+      if (isImage) {
+        // For images, use the data URI directly
+        contentForAI = content;
+      } else {
+        // For other files, use the markdown content from markitdown
+        contentForAI = content;
+      }
+      
+      // Step 3: Process with AI using the properly formatted content
+      const aiFormData = new FormData();
+      aiFormData.append('fileDataUri', contentForAI);
+      aiFormData.append('solutionId', solution.id);
 
-      const result = await processDocumentAction(formData);
+      const result = await processDocumentAction(aiFormData);
 
       if (result.success) {
         setResults(result.data);
       } else {
         setError(result.error || "An unknown error occurred.");
       }
+    } catch (error) {
+      console.error('Error processing file:', error);
+      setError(error instanceof Error ? error.message : "Failed to process file.");
+    } finally {
       setIsLoading(false);
-    };
-    reader.onerror = () => {
-        setError("Failed to read file.");
-        setIsLoading(false);
     }
   };
 

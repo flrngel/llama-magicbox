@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { getSolutionById } from "@/lib/data";
+import { getSolutionById, incrementSolutionUsage } from "@/lib/data";
 import { processDocument } from "@/ai/flows/process-document-flow";
 
 const processDocumentSchema = z.object({
@@ -31,6 +31,14 @@ export async function processDocumentAction(formData: FormData) {
       systemInstructions: solution.systemInstructions,
       modelOutputStructure: solution.modelOutputStructure,
     });
+    
+    // Increment usage count on successful processing
+    try {
+      incrementSolutionUsage(input.solutionId);
+    } catch (usageError) {
+      // Don't fail the main request if usage tracking fails
+      console.warn('Failed to increment usage count:', usageError);
+    }
     
     return { success: true, data: result };
 
