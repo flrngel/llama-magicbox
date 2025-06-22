@@ -598,7 +598,7 @@ function CreatePageContent() {
                   </div>
                   <div className="mt-8 flex justify-end gap-2">
                     <Button variant="outline" onClick={handleBack}>Refine Model</Button>
-                    <Button onClick={handlePublish} disabled={!isStep3Valid}>Share Your Knowledge</Button>
+                    <Button onClick={handlePublish} disabled={!isStep3Valid}>Publish Solution</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -618,7 +618,7 @@ function CreatePageContent() {
                 </Card>
                 <div className="flex justify-center gap-4">
                     <Button variant="outline" asChild><Link href="/">View in Marketplace</Link></Button>
-                    <Button onClick={resetCreateFlow}>Share More Knowledge</Button>
+                    <Button onClick={resetCreateFlow}>Create More Solutions</Button>
                     <Button
                       onClick={() => {
                         const url = `${window.location.origin}/use/${currentSolution?.slug}`;
