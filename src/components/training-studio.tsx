@@ -7,7 +7,7 @@ import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
 import { FileUploader } from "./file-uploader";
 import { TrainingSession } from "./training-session";
-import { ArrowLeft, CheckCircle, AlertCircle, Clock, Plus } from "lucide-react";
+import { ArrowLeft, CheckCircle, AlertCircle, Clock, Plus, X } from "lucide-react";
 import { Solution, DataItem } from "@/lib/data";
 import { processDocument } from "@/ai/flows/process-document-flow";
 import { useToast } from "@/hooks/use-toast";
@@ -59,7 +59,20 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
   }, [trainingDocuments]);
 
   const handleFileUpload = async (files: File[]) => {
-    for (const file of files) {
+    // Filter out files that are already being processed
+    const existingFileNames = trainingDocuments.map(doc => doc.file.name);
+    const newFiles = files.filter(file => !existingFileNames.includes(file.name));
+    
+    if (newFiles.length === 0) {
+      toast({ 
+        title: "Duplicate Files", 
+        description: "These files are already being processed.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    for (const file of newFiles) {
       const documentId = `doc-${Date.now()}-${Math.random()}`;
       const reader = new FileReader();
       
@@ -134,6 +147,20 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
 
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleDeleteDocument = (documentId: string) => {
+    setTrainingDocuments(prev => prev.filter(doc => doc.id !== documentId));
+    
+    // If the deleted document was selected, clear selection
+    if (selectedDocumentId === documentId) {
+      setSelectedDocumentId(null);
+    }
+    
+    toast({ 
+      title: "Document Removed", 
+      description: "Training document has been removed from the session."
+    });
   };
 
   const calculateConfidence = (aiOutput: any): number => {
@@ -223,6 +250,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
                 onUpload={handleFileUpload} 
                 maxFiles={5} 
                 multiple
+                showFileList={false}
               />
               
               <div className="space-y-2">
@@ -240,7 +268,20 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
                       <span className="text-sm font-medium truncate">
                         {doc.file.name}
                       </span>
-                      {getStatusIcon(doc.status)}
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(doc.status)}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteDocument(doc.id);
+                          }}
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <Badge variant="secondary" className={getStatusColor(doc.status)}>

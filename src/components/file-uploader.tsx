@@ -11,6 +11,9 @@ interface FileUploaderProps {
   maxSize?: number; // in MB
   accept?: any;
   multiple?: boolean;
+  existingFiles?: File[]; // External file list for display
+  onRemoveFile?: (file: File) => void; // External remove handler
+  showFileList?: boolean; // Whether to show the file list (defaults to true)
 }
 
 export function FileUploader({
@@ -19,8 +22,10 @@ export function FileUploader({
   maxSize = 10,
   accept = { 'image/jpeg': [], 'image/png': [], 'application/pdf': [], 'text/plain': [], 'text/csv': [] },
   multiple = false,
+  existingFiles = [],
+  onRemoveFile,
+  showFileList = true,
 }: FileUploaderProps) {
-  const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const onDrop = useCallback(
@@ -30,11 +35,17 @@ export function FileUploader({
         setError(fileRejections[0].errors[0].message);
         return;
       }
-      const newFiles = multiple ? [...files, ...acceptedFiles] : [...acceptedFiles];
-      setFiles(newFiles);
-      onUpload(newFiles);
+      
+      // Check if adding these files would exceed maxFiles
+      if (existingFiles.length + acceptedFiles.length > maxFiles) {
+        setError(`Cannot upload more than ${maxFiles} files total.`);
+        return;
+      }
+      
+      // Only pass the newly uploaded files, not all files
+      onUpload(acceptedFiles);
     },
-    [files, onUpload, multiple]
+    [existingFiles.length, onUpload, maxFiles]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -46,9 +57,9 @@ export function FileUploader({
   });
   
   const removeFile = (fileToRemove: File) => {
-    const newFiles = files.filter(file => file !== fileToRemove);
-    setFiles(newFiles);
-    onUpload(newFiles);
+    if (onRemoveFile) {
+      onRemoveFile(fileToRemove);
+    }
   }
 
   return (
@@ -71,11 +82,11 @@ export function FileUploader({
         </p>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      {files.length > 0 && (
+      {showFileList && existingFiles.length > 0 && (
         <div className="space-y-2">
           <h4 className="font-medium">Uploaded Files:</h4>
           <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {files.map((file, i) => (
+            {existingFiles.map((file, i) => (
               <li key={i} className="flex items-center justify-between p-2 bg-muted rounded-md text-sm">
                 <div className="flex items-center gap-2 truncate">
                    {file.type.startsWith('image/') ? (
@@ -85,9 +96,11 @@ export function FileUploader({
                    )}
                    <span className="truncate">{file.name}</span>
                 </div>
-                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeFile(file)}>
-                    <X className="h-4 w-4"/>
-                 </Button>
+                 {onRemoveFile && (
+                   <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeFile(file)}>
+                      <X className="h-4 w-4"/>
+                   </Button>
+                 )}
               </li>
             ))}
           </ul>
