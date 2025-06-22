@@ -79,22 +79,24 @@ export default function Home() {
       <main className="flex-1">
         <div className="container px-4 md:px-6 py-8">
           {/* Page Header */}
-          <div className="space-y-4 mb-8">
-            <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl font-headline">
-              Solution Marketplace
+          <div className="text-center space-y-4 mb-12">
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+              <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Solution Marketplace
+              </span>
             </h1>
-            <p className="text-muted-foreground md:text-xl/relaxed">
+            <p className="text-gray-600 dark:text-gray-400 md:text-xl/relaxed max-w-2xl mx-auto">
               Discover and use AI solutions built by experts in the community.
             </p>
           </div>
           
           {/* Search, Filter, and Sort */}
-          <div className="flex flex-col md:flex-row gap-4 mb-8">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <div className="flex flex-col md:flex-row gap-4 mb-10 max-w-4xl mx-auto">
+            <div className="relative flex-1 group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-purple-600 transition-colors" />
               <Input
                 placeholder="Search solutions..."
-                className="pl-10"
+                className="pl-12 h-12 text-base"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -134,12 +136,15 @@ export default function Home() {
 
           {/* Solutions Grid */}
           {loading ? (
-            <div className="text-center py-16">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading solutions...</p>
+            <div className="text-center py-20">
+              <div className="relative">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-200 border-t-purple-600 mx-auto"></div>
+                <div className="absolute inset-0 animate-ping rounded-full h-12 w-12 border-4 border-purple-600 opacity-20 mx-auto"></div>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 mt-4">Loading amazing solutions...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 stagger-animation">
               {filteredSolutions.map((solution) => (
                 <SolutionCard key={solution.id} solution={solution} />
               ))}

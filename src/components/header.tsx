@@ -14,27 +14,30 @@ export function Header() {
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center">
+    <header className="sticky top-0 z-50 w-full bg-gradient-to-b from-white/30 to-transparent dark:from-gray-900/30 dark:to-transparent backdrop-blur-xl shadow-sm">
+      <div className="container flex h-16 items-center">
         <div className="mr-4 flex">
-          <Link href="/" className="flex items-center space-x-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-6 w-6 text-primary"
-            >
-              <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
-              <path d="m3.3 7 8.7 5 8.7-5"></path>
-              <path d="M12 22V12"></path>
-            </svg>
-            <span className="font-headline text-xl font-bold text-primary">MagicBox</span>
+          <Link href="/" className="flex items-center space-x-2 group">
+            <div className="relative">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-7 w-7 text-purple-600 dark:text-purple-400 transition-transform duration-300 group-hover:scale-110"
+              >
+                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+                <path d="m3.3 7 8.7 5 8.7-5"></path>
+                <path d="M12 22V12"></path>
+              </svg>
+              <div className="absolute inset-0 bg-purple-600 dark:bg-purple-400 blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-300" />
+            </div>
+            <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">MagicBox</span>
           </Link>
         </div>
         <nav className="flex flex-1 items-center justify-end space-x-2">
@@ -76,7 +79,11 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button variant="outline" onClick={() => setShowLoginModal(true)}>
+            <Button 
+              variant="ghost" 
+              onClick={() => setShowLoginModal(true)}
+              className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+            >
               Sign In
             </Button>
           )}

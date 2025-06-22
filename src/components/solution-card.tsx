@@ -21,24 +21,30 @@ export function SolutionCard({ solution }: SolutionCardProps) {
   const isDraft = solution.status === 'draft';
   
   const cardContent = (
-    <Card className={`flex flex-col h-full transition-all hover:shadow-lg hover:-translate-y-1 cursor-pointer ${isDraft ? 'border-orange-200' : ''}`}>
-      <CardHeader>
-        <CardTitle className="font-headline tracking-tight truncate">
+    <Card className={`group flex flex-col h-full transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 cursor-pointer relative ${isDraft ? 'border-orange-300 border-2' : ''}`}>
+      {!isDraft && (
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-transparent to-pink-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl pointer-events-none" />
+      )}
+      <CardHeader className="relative">
+        <CardTitle className="font-semibold text-lg bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent truncate">
           {solution.name || 'Untitled Solution'}
         </CardTitle>
-        <CardDescription className="truncate">
-          {solution.creator || (isDraft ? 'Draft solution' : 'Unknown creator')}
+        <CardDescription className="text-sm text-gray-600 dark:text-gray-400 truncate">
+          by {solution.creator || (isDraft ? 'Draft solution' : 'Unknown creator')}
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow">
-        <p className="text-sm text-muted-foreground line-clamp-2">
+      <CardContent className="flex-grow relative">
+        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 leading-relaxed">
           {solution.description || 'No description yet'}
         </p>
         {isDraft && (
-          <p className="text-xs text-orange-600 mt-2 font-medium">Draft - Click to continue editing</p>
+          <div className="absolute -inset-1 bg-gradient-to-r from-orange-400 to-amber-400 rounded-lg blur opacity-20 group-hover:opacity-30 transition-opacity duration-300" />
+        )}
+        {isDraft && (
+          <p className="text-xs text-orange-600 dark:text-orange-400 mt-3 font-semibold relative">Draft - Click to continue editing</p>
         )}
       </CardContent>
-      <CardFooter className="flex justify-between items-center">
+      <CardFooter className="flex justify-between items-center relative pt-4 border-t border-gray-100 dark:border-gray-800">
         <RatingStatsInline 
           solutionId={solution.id}
           usageCount={solution.usageCount || 0}

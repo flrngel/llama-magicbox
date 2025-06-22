@@ -127,20 +127,31 @@ export function FileUploader({
     <div className="space-y-4">
       <div
         {...getRootProps()}
-        className={`p-8 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${
-          isDragActive ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+        className={`relative p-10 border-2 border-dashed rounded-xl text-center cursor-pointer transition-all duration-300 group overflow-hidden ${
+          isDragActive 
+            ? "border-purple-500 bg-purple-50 dark:bg-purple-950/20 scale-[1.02]" 
+            : "border-gray-300 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-600 bg-gray-50/50 dark:bg-gray-900/50 hover:bg-purple-50/50 dark:hover:bg-purple-950/30"
         }`}
       >
         <input {...getInputProps()} />
-        <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/5 via-transparent to-pink-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <UploadCloud className={`mx-auto h-14 w-14 mb-4 transition-all duration-300 ${
+          isDragActive 
+            ? "text-purple-600 dark:text-purple-400 scale-110" 
+            : "text-gray-400 dark:text-gray-600 group-hover:text-purple-500 dark:group-hover:text-purple-400 group-hover:scale-105"
+        }`} />
         {isDragActive ? (
-          <p className="text-primary">Drop the files here ...</p>
+          <p className="text-lg font-medium text-purple-600 dark:text-purple-400">Drop your files here!</p>
         ) : (
-          <p>Drag & drop some files here, or click to select files</p>
+          <div>
+            <p className="text-gray-700 dark:text-gray-300 font-medium">
+              Drag & drop files here, or <span className="text-purple-600 dark:text-purple-400">browse</span>
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+              Supports 40+ formats • Max {maxSize}MB per file
+            </p>
+          </div>
         )}
-        <p className="text-xs text-muted-foreground mt-2">
-          Supported: PDF, Office docs, Images, Audio, ZIP, HTML, Text files, and more. Max {maxSize}MB per file.
-        </p>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       {showFileList && displayFiles.length > 0 && (

@@ -83,8 +83,8 @@ export function ChatTrainer({ messages, setMessages, solution, updateSolution }:
   }
 
   return (
-    <div className="flex flex-col h-[450px] border rounded-lg bg-card">
-      <div ref={scrollAreaRef} className="flex-1 p-4 space-y-4 overflow-y-auto">
+    <div className="flex flex-col h-[500px] rounded-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 shadow-xl overflow-hidden">
+      <div ref={scrollAreaRef} className="flex-1 p-6 space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700 scrollbar-track-transparent">
         {messages.map((message, index) => (
           <div
             key={index}
@@ -100,10 +100,10 @@ export function ChatTrainer({ messages, setMessages, solution, updateSolution }:
             )}
             <div
               className={cn(
-                "max-w-[75%] rounded-lg p-3 text-sm",
+                "max-w-[75%] rounded-2xl px-4 py-3 text-sm transition-all duration-200",
                 message.sender === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted"
+                  ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                  : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-md"
               )}
             >
               <p>{message.text}</p>
@@ -120,33 +120,33 @@ export function ChatTrainer({ messages, setMessages, solution, updateSolution }:
                  <Avatar className="w-8 h-8">
                     <AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback>
                 </Avatar>
-                <div className="bg-muted p-3 rounded-lg">
+                <div className="bg-gray-100 dark:bg-gray-800 px-4 py-3 rounded-2xl shadow-md">
                     <div className="flex items-center space-x-1">
-                        <span className="h-2 w-2 bg-foreground/50 rounded-full animate-pulse [animation-delay:-0.3s]"></span>
-                        <span className="h-2 w-2 bg-foreground/50 rounded-full animate-pulse [animation-delay:-0.15s]"></span>
-                        <span className="h-2 w-2 bg-foreground/50 rounded-full animate-pulse"></span>
+                        <span className="h-2 w-2 bg-purple-600 dark:bg-purple-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                        <span className="h-2 w-2 bg-purple-600 dark:bg-purple-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                        <span className="h-2 w-2 bg-purple-600 dark:bg-purple-400 rounded-full animate-bounce"></span>
                     </div>
                 </div>
             </div>
         )}
       </div>
-      <div className="p-4 border-t">
+      <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/50">
         <div className="relative">
           <Textarea
             placeholder="Type your training instructions..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
-            className="pr-16 min-h-[60px]"
+            className="pr-16 min-h-[60px] resize-none"
             disabled={isLoading}
           />
           <Button
             size="icon"
-            className="absolute top-1/2 right-3 -translate-y-1/2"
+            className="absolute bottom-3 right-3 h-10 w-10 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
             onClick={handleSend}
             disabled={isLoading || input.trim() === ""}
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-4 h-4" />
           </Button>
         </div>
       </div>
