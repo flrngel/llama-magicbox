@@ -16,6 +16,7 @@ export interface RefineSolutionInput {
 export interface RefineSolutionOutput {
   updatedSystemInstructions: string;
   aiResponse: string;
+  shouldUserFollow: boolean; // true if AI is asking a follow-up question and needs more info
 }
 
 export async function refineSolution(
@@ -36,25 +37,36 @@ USER'S LATEST FEEDBACK:
 "${input.userInput}"
 
 YOUR TASKS:
-1. Create improved system instructions that incorporate the user's feedback
-2. Provide a helpful, conversational response (DO NOT include the actual structured output or repeat the data - the user can already see that)
+1. Analyze if the user's feedback is clear enough to update instructions, or if you need more information
+2. If clear enough: Create improved system instructions and provide confirmation
+3. If unclear: Ask a specific follow-up question to clarify what they want
+
+DECISION LOGIC:
+- If user feedback is vague, ambiguous, or missing key details → set shouldUserFollow: true and ask specific questions
+- If user feedback is clear and actionable → set shouldUserFollow: false and update instructions
+
+EXAMPLES OF WHEN TO ASK FOLLOW-UP (shouldUserFollow: true):
+- User: "Make it better" → Ask: "What specific aspect should I improve?"
+- User: "Fix the names" → Ask: "How should the names be formatted or what's wrong with them?"
+- User: "Add more fields" → Ask: "Which additional fields would you like me to extract?"
+
+EXAMPLES OF WHEN TO UPDATE (shouldUserFollow: false):
+- User: "Normalize abbreviations like LRG to LARGE" → Clear, actionable instruction
+- User: "Extract the date in MM/DD/YYYY format" → Specific formatting requirement
+- User: "Focus only on line items, ignore headers" → Clear extraction guidance
 
 IMPORTANT GUIDELINES FOR YOUR RESPONSE:
 - Be conversational and helpful
-- Focus on confirming what you learned from their feedback
-- Ask follow-up questions if needed
 - DO NOT repeat or show the JSON structure/data
 - DO NOT include technical details about the output format
 - Be concise and natural
-
-EXAMPLE:
-User: "Focus more on the vendor name and total amount"
-Good response: "Got it! I've updated the instructions to prioritize extracting vendor names and total amounts more accurately. Is there anything specific about how vendor names should be formatted?"
-
-Bad response: "I've updated the instructions. Here's the extracted data: {vendor: 'ABC Corp', amount: 150.00}..." 
+- When asking follow-up questions, be specific about what information you need
 
 CRITICAL: Return ONLY a raw JSON object with this exact structure:
-{"updatedSystemInstructions": "your improved instructions here", "aiResponse": "your conversational response here"}
+{"updatedSystemInstructions": "your improved instructions here", "aiResponse": "your conversational response here", "shouldUserFollow": true/false}
+
+- If shouldUserFollow is true: Keep updatedSystemInstructions the same as current instructions
+- If shouldUserFollow is false: Provide improved instructions based on user feedback
 
 Do NOT include any markdown, explanations, or text outside the JSON object.`;
 
@@ -84,7 +96,7 @@ Do NOT include any markdown, explanations, or text outside the JSON object.`;
         }
         
         // Try to find the last JSON object in the response
-        const jsonMatches = jsonStr.match(/\{[^{}]*"updatedSystemInstructions"[^{}]*"aiResponse"[^{}]*\}/g);
+        const jsonMatches = jsonStr.match(/\{[^{}]*"updatedSystemInstructions"[^{}]*"aiResponse"[^{}]*"shouldUserFollow"[^{}]*\}/g);
         if (jsonMatches) {
           jsonStr = jsonMatches[jsonMatches.length - 1];
         }
@@ -92,7 +104,8 @@ Do NOT include any markdown, explanations, or text outside the JSON object.`;
         const parsed = JSON.parse(jsonStr);
         return {
           updatedSystemInstructions: parsed.updatedSystemInstructions || input.currentInstructions || '',
-          aiResponse: parsed.aiResponse || 'I\'ve updated the instructions based on your feedback.'
+          aiResponse: parsed.aiResponse || 'I\'ve updated the instructions based on your feedback.',
+          shouldUserFollow: parsed.shouldUserFollow || false
         };
       } else {
         throw new Error('No response received');
@@ -104,7 +117,8 @@ Do NOT include any markdown, explanations, or text outside the JSON object.`;
       // Fallback if JSON parsing fails
       return {
         updatedSystemInstructions: input.currentInstructions || 'You are a helpful AI assistant. Extract information from the provided document based on the user\'s requirements and return it as a structured JSON object.',
-        aiResponse: 'I understand your feedback and will incorporate it into the instructions.'
+        aiResponse: 'I understand your feedback and will incorporate it into the instructions.',
+        shouldUserFollow: false
       };
     }
   } catch (error) {

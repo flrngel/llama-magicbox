@@ -173,14 +173,14 @@ export function TrainingSession({
 
       if (refinementResult) {
         const newInstructions = refinementResult.updatedSystemInstructions;
+        const shouldUserFollow = refinementResult.shouldUserFollow;
         
-        // Update server-side solution state immediately
-        console.log('TrainingSession updating solution with new instructions:', newInstructions);
-        console.log('Previous instructions were:', solution.systemInstructions);
-        await updateSolution({ 
-          systemInstructions: newInstructions 
+        console.log('TrainingSession refinement result:', {
+          shouldUserFollow,
+          previousInstructions: solution.systemInstructions,
+          newInstructions,
+          aiResponse: refinementResult.aiResponse
         });
-        console.log('Solution update completed');
 
         // Add AI response first
         const aiMessage = {
@@ -189,48 +189,71 @@ export function TrainingSession({
           timestamp: new Date()
         };
 
-        // Force reprocess with new instructions to immediately show the effect
-        setTimeout(async () => {
-          try {
-            const reprocessResult = await processDocument({
-              fileDataUri: document.dataUri,
-              systemInstructions: newInstructions,
-              modelOutputStructure: solution.modelOutputStructure || "z.object({})",
-            });
+        if (shouldUserFollow) {
+          // AI is asking for clarification - don't update instructions yet
+          console.log('AI is asking follow-up questions - not updating instructions');
+          
+          const followUpDocument = {
+            ...updatedWithUserMessage,
+            chatHistory: [...updatedWithUserMessage.chatHistory, aiMessage]
+          };
+          
+          onDocumentUpdate(followUpDocument);
+          
+          toast({ 
+            title: "Follow-up Question", 
+            description: "Please provide more details to help improve the instructions." 
+          });
+        } else {
+          // User feedback was clear - update instructions and reprocess
+          console.log('Updating solution with new instructions:', newInstructions);
+          await updateSolution({ 
+            systemInstructions: newInstructions 
+          });
 
-            const confidence = calculateConfidence(reprocessResult);
-            const reprocessedDocument: TrainingDocument = {
-              ...updatedWithUserMessage,
-              status: 'ready',
-              aiOutput: reprocessResult,
-              confidence,
-              chatHistory: [
-                ...updatedWithUserMessage.chatHistory,
-                aiMessage,
-                {
-                  sender: 'ai',
-                  message: `I've applied the updated instructions and reprocessed the document. You can see the improved output above.`,
-                  timestamp: new Date()
-                }
-              ]
-            };
+          // Force reprocess with new instructions to immediately show the effect
+          setTimeout(async () => {
+            try {
+              const reprocessResult = await processDocument({
+                fileDataUri: document.dataUri,
+                systemInstructions: newInstructions,
+                modelOutputStructure: solution.modelOutputStructure || "z.object({})",
+              });
 
-            onDocumentUpdate(reprocessedDocument);
-          } catch (error) {
-            console.error('Error reprocessing with new instructions:', error);
-            // If reprocessing fails, at least show the chat response
-            const fallbackDocument = {
-              ...updatedWithUserMessage,
-              chatHistory: [...updatedWithUserMessage.chatHistory, aiMessage]
-            };
-            onDocumentUpdate(fallbackDocument);
-          }
-        }, 100);
+              const confidence = calculateConfidence(reprocessResult);
+              const reprocessedDocument: TrainingDocument = {
+                ...updatedWithUserMessage,
+                status: 'ready',
+                aiOutput: reprocessResult,
+                confidence,
+                chatHistory: [
+                  ...updatedWithUserMessage.chatHistory,
+                  aiMessage,
+                  {
+                    sender: 'ai',
+                    message: `I've applied the updated instructions and reprocessed the document. You can see the improved output above.`,
+                    timestamp: new Date()
+                  }
+                ]
+              };
 
-        toast({ 
-          title: "Instructions Updated", 
-          description: "I've learned from your feedback and updated the solution instructions." 
-        });
+              onDocumentUpdate(reprocessedDocument);
+            } catch (error) {
+              console.error('Error reprocessing with new instructions:', error);
+              // If reprocessing fails, at least show the chat response
+              const fallbackDocument = {
+                ...updatedWithUserMessage,
+                chatHistory: [...updatedWithUserMessage.chatHistory, aiMessage]
+              };
+              onDocumentUpdate(fallbackDocument);
+            }
+          }, 100);
+
+          toast({ 
+            title: "Instructions Updated", 
+            description: "I've learned from your feedback and updated the solution instructions." 
+          });
+        }
       }
     } catch (error) {
       console.error('Error in chat:', error);
@@ -385,10 +408,10 @@ export function TrainingSession({
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Training Chat</CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col p-0">
+          <CardContent className="flex-1 flex flex-col p-0 min-h-0">
             {/* Chat Messages */}
-            <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
-              <div className="space-y-4">
+            <ScrollArea ref={scrollAreaRef} className="flex-1 p-4 min-h-0">
+              <div className="space-y-4 overflow-hidden">
                 {document.chatHistory.map((msg, index) => (
                   <div
                     key={index}
@@ -397,26 +420,26 @@ export function TrainingSession({
                     }`}
                   >
                     {msg.sender === 'ai' && (
-                      <Avatar className="w-8 h-8">
+                      <Avatar className="w-8 h-8 flex-shrink-0">
                         <AvatarFallback>
                           <Bot className="w-4 h-4" />
                         </AvatarFallback>
                       </Avatar>
                     )}
                     <div
-                      className={`max-w-[80%] rounded-lg p-3 text-sm ${
+                      className={`max-w-[calc(100%-3rem)] min-w-0 rounded-lg p-3 text-sm ${
                         msg.sender === 'user'
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-muted'
                       }`}
                     >
-                      <p className="whitespace-pre-wrap">{msg.message}</p>
+                      <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{msg.message}</p>
                       <span className="text-xs opacity-70 mt-1 block">
                         {msg.timestamp.toLocaleTimeString()}
                       </span>
                     </div>
                     {msg.sender === 'user' && (
-                      <Avatar className="w-8 h-8">
+                      <Avatar className="w-8 h-8 flex-shrink-0">
                         <AvatarFallback>
                           <User className="w-4 h-4" />
                         </AvatarFallback>
@@ -427,12 +450,12 @@ export function TrainingSession({
                 
                 {isChatting && (
                   <div className="flex items-start gap-3 justify-start">
-                    <Avatar className="w-8 h-8">
+                    <Avatar className="w-8 h-8 flex-shrink-0">
                       <AvatarFallback>
                         <Bot className="w-4 h-4" />
                       </AvatarFallback>
                     </Avatar>
-                    <div className="bg-muted p-3 rounded-lg">
+                    <div className="max-w-[calc(100%-3rem)] min-w-0 bg-muted p-3 rounded-lg">
                       <div className="flex items-center space-x-1">
                         <span className="h-2 w-2 bg-foreground/50 rounded-full animate-pulse [animation-delay:-0.3s]"></span>
                         <span className="h-2 w-2 bg-foreground/50 rounded-full animate-pulse [animation-delay:-0.15s]"></span>

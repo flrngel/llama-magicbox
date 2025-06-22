@@ -26,7 +26,13 @@ export function FileUploader({
   onRemoveFile,
   showFileList = true,
 }: FileUploaderProps) {
+  // Internal state for backward compatibility when no existingFiles prop is provided
+  const [internalFiles, setInternalFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use existingFiles if provided, otherwise fall back to internal state
+  const displayFiles = existingFiles.length > 0 || !showFileList ? existingFiles : internalFiles;
+  const isExternallyManaged = existingFiles.length > 0 || onRemoveFile !== undefined;
 
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections: any[]) => {
@@ -36,16 +42,25 @@ export function FileUploader({
         return;
       }
       
+      const currentFileCount = isExternallyManaged ? existingFiles.length : internalFiles.length;
+      
       // Check if adding these files would exceed maxFiles
-      if (existingFiles.length + acceptedFiles.length > maxFiles) {
+      if (currentFileCount + acceptedFiles.length > maxFiles) {
         setError(`Cannot upload more than ${maxFiles} files total.`);
         return;
       }
       
-      // Only pass the newly uploaded files, not all files
-      onUpload(acceptedFiles);
+      if (isExternallyManaged) {
+        // New behavior: only pass newly uploaded files
+        onUpload(acceptedFiles);
+      } else {
+        // Legacy behavior: manage files internally and pass all files
+        const newFiles = multiple ? [...internalFiles, ...acceptedFiles] : acceptedFiles;
+        setInternalFiles(newFiles);
+        onUpload(newFiles);
+      }
     },
-    [existingFiles.length, onUpload, maxFiles]
+    [existingFiles.length, internalFiles, onUpload, maxFiles, multiple, isExternallyManaged]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -57,8 +72,14 @@ export function FileUploader({
   });
   
   const removeFile = (fileToRemove: File) => {
-    if (onRemoveFile) {
+    if (isExternallyManaged && onRemoveFile) {
+      // External management: call the provided remove handler
       onRemoveFile(fileToRemove);
+    } else {
+      // Internal management: update internal state and call onUpload
+      const newFiles = internalFiles.filter(file => file !== fileToRemove);
+      setInternalFiles(newFiles);
+      onUpload(newFiles);
     }
   }
 
@@ -82,11 +103,11 @@ export function FileUploader({
         </p>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      {showFileList && existingFiles.length > 0 && (
+      {showFileList && displayFiles.length > 0 && (
         <div className="space-y-2">
           <h4 className="font-medium">Uploaded Files:</h4>
           <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {existingFiles.map((file, i) => (
+            {displayFiles.map((file, i) => (
               <li key={i} className="flex items-center justify-between p-2 bg-muted rounded-md text-sm">
                 <div className="flex items-center gap-2 truncate">
                    {file.type.startsWith('image/') ? (
@@ -96,7 +117,7 @@ export function FileUploader({
                    )}
                    <span className="truncate">{file.name}</span>
                 </div>
-                 {onRemoveFile && (
+                 {(isExternallyManaged ? onRemoveFile : true) && (
                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeFile(file)}>
                       <X className="h-4 w-4"/>
                    </Button>

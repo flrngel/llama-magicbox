@@ -200,6 +200,27 @@ export default function CreatePage() {
     setTestError(null);
 
     const file = testFile[0];
+    
+    // Validate solution data before processing
+    if (!currentSolution.systemInstructions) {
+      setTestError("No system instructions found. Please complete step 2 training first.");
+      setIsTesting(false);
+      return;
+    }
+    
+    if (!currentSolution.modelOutputStructure) {
+      setTestError("No output structure defined. Please complete step 1 first.");
+      setIsTesting(false);
+      return;
+    }
+    
+    console.log('Step 3 Test - Solution data:', {
+      systemInstructions: currentSolution.systemInstructions,
+      modelOutputStructure: currentSolution.modelOutputStructure,
+      fileName: file.name,
+      fileType: file.type
+    });
+
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = async () => {
@@ -212,7 +233,9 @@ export default function CreatePage() {
         });
         setTestResult(result);
       } catch (e) {
-        setTestError("The AI failed to process this document. You may need to refine your instructions in Step 2.");
+        console.error('Step 3 Test Error:', e);
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        setTestError(`Document processing failed: ${errorMessage}. You may need to refine your instructions in Step 2.`);
       } finally {
         setIsTesting(false);
       }
@@ -248,6 +271,28 @@ export default function CreatePage() {
       setCurrentSolution(result.data!);
     }
   }, [solutionId]);
+
+  // Refresh solution data when entering step 3
+  const refreshSolutionData = useCallback(async () => {
+    if (!solutionId) return;
+    
+    try {
+      const result = await getSolutionAction(solutionId);
+      if (result.success) {
+        setCurrentSolution(result.data!);
+        console.log('Step 3 - Refreshed solution data:', result.data);
+      }
+    } catch (error) {
+      console.error('Failed to refresh solution data:', error);
+    }
+  }, [solutionId]);
+
+  // Refresh solution data when entering step 3 to ensure latest instructions
+  useEffect(() => {
+    if (step === 3 && solutionId) {
+      refreshSolutionData();
+    }
+  }, [step, solutionId, refreshSolutionData]);
 
   const progress = (step / 4) * 100;
   // Validate form using local state

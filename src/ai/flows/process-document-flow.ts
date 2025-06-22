@@ -196,6 +196,27 @@ ${input.modelOutputStructure}`;
     }
   } catch (error) {
     console.error('Error processing document:', error);
-    throw new Error('Failed to process document');
+    
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        throw new Error('API key error: Please check your LLAMA_API_KEY environment variable');
+      }
+      if (error.message.includes('fetch')) {
+        throw new Error('Network error: Unable to connect to AI service');
+      }
+      if (error.message.includes('JSON')) {
+        throw new Error('Response parsing error: AI returned invalid data format');
+      }
+      if (error.message.includes('401')) {
+        throw new Error('Authentication error: Invalid API key');
+      }
+      if (error.message.includes('429')) {
+        throw new Error('Rate limit error: Too many requests, please try again later');
+      }
+      throw error; // Re-throw with original message if it's already descriptive
+    }
+    
+    throw new Error(`Document processing failed: ${String(error)}`);
   }
 }
