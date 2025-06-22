@@ -14,8 +14,9 @@ export function Header() {
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-gradient-to-b from-white/30 to-transparent dark:from-gray-900/30 dark:to-transparent backdrop-blur-xl shadow-sm">
-      <div className="container flex h-16 items-center">
+    <header className="sticky top-0 z-50 w-full px-4 md:px-6 lg:px-8 pt-4">
+      <div className="rounded-2xl bg-gradient-to-b from-white/80 to-white/60 dark:from-gray-900/80 dark:to-gray-900/60 backdrop-blur-xl shadow-lg border border-gray-200/50 dark:border-gray-700/50">
+        <div className="container flex h-16 items-center px-6">
         <div className="mr-4 flex">
           <Link href="/" className="flex items-center space-x-2 group">
             <div className="relative">
@@ -88,6 +89,7 @@ export function Header() {
             </Button>
           )}
         </nav>
+        </div>
       </div>
       <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} />
     </header>

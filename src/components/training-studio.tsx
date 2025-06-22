@@ -172,7 +172,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
               isImage: dataItem.type === 'image',
               processedContent: dataItem.type !== 'image' ? dataItem.content_uri : undefined,
               dataItemId: dataItem.id,
-              status: 'approved' as const, // Mark existing training as approved
+              status: 'ready' as const, // Set to ready so users can review and approve/reject
               aiOutput: dataItem.model_output,
               confidence: dataItem.model_output ? calculateConfidence(dataItem.model_output) : 0,
               chatHistory: [{
@@ -189,7 +189,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
         setShowPreviousTrainingNotice(true);
         toast({
           title: "Previous Training Loaded",
-          description: `Found ${existingDocuments.length} previously trained documents.`
+          description: `Found ${existingDocuments.length} training documents. Please review and approve them before proceeding.`
         });
       }
     } catch (error) {
@@ -568,7 +568,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
                   </button>
                   <p className="text-sm text-green-800 pr-6">
                     <strong>Previous training loaded:</strong> Found {trainingDocuments.filter(d => d.dataItemId).length} saved training documents. 
-                    You can upload additional documents to continue training.
+                    Please review and approve them before proceeding. You can also upload additional documents.
                   </p>
                 </div>
               )}
