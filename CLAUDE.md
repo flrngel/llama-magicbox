@@ -43,7 +43,8 @@ MagicBox is a crowdsourced AI platform where creators train specialized document
 - **Frontend**: Next.js 15 with TypeScript, App Router
 - **AI Integration**: Llama API client with Llama 3.2 models
 - **UI Framework**: shadcn/ui with Tailwind CSS
-- **Data Layer**: Mock data system (ready for database integration)
+- **Database**: SQLite with better-sqlite3 for persistent data storage
+- **Data Layer**: Full database integration with API routes
 
 ### AI Flows
 
@@ -57,12 +58,56 @@ Each flow follows the pattern:
 2. Create comprehensive prompts for Llama models
 3. Handle API calls with error handling and fallbacks
 
+### Database Architecture
+
+**Database System**: SQLite with better-sqlite3 driver
+- **Location**: `magicbox.db` in project root
+- **Schema**: Relational database with users, solutions, and data_items tables
+- **Migration Support**: Automatic schema updates and data migration
+- **Seeding**: Default data with sample solutions and users
+
+**Database Tables:**
+- `users` - User accounts with id, name, email, avatar
+- `solutions` - AI solutions with metadata, status (draft/published), and training data
+- `data_items` - Training examples linked to solutions with file content and AI outputs
+
+**Key Features:**
+- Draft solution support for creator workflow
+- Automatic foreign key constraints and indexing
+- Migration system for schema updates
+- Deterministic seeding for consistent development data
+
+### API Layer
+
+**API Routes** (`/src/app/api/`):
+- `GET /api/solutions` - Fetch all published solutions
+- `POST /api/solutions` - Create new solution with training data
+- `GET /api/solutions/[id]` - Fetch solution by ID
+- `GET /api/solutions/my?creatorId=X` - Fetch solutions by creator
+- `GET /api/solutions/slug/[slug]` - Fetch solution by slug
+
+**Data Operations** (`/src/lib/db-operations.ts`):
+- User CRUD operations with email uniqueness
+- Solution lifecycle management (draft → published)
+- Training data item management
+- Complex operations like `publishSolutionWithDataItems`
+
+**Client Layer** (`/src/lib/data-client.ts`):
+- Type-safe API client functions
+- Error handling and response parsing
+- Clean separation between server and client data access
+
 ### Data Models
 
-The main data model is the `Solution` interface in `src/lib/data.ts`:
-- Contains metadata, usage stats, and example outputs
-- Categories include Tax & Finance, Medical & Insurance, Rental & Legal, Personal Organization
-- Mock data generates random usernames for solution creators
+**Core Interfaces** (`src/lib/data.ts`):
+- `Solution` - Complete solution with metadata, training data, and status
+- `DataItem` - Training examples with file content and model outputs
+- `User` - User accounts with authentication data
+
+**Solution Lifecycle:**
+- Draft solutions for creator workflow
+- Published solutions visible in marketplace
+- Status transitions managed through database operations
 
 ### Creator Flow (4 Steps per PM Blueprint)
 
@@ -108,6 +153,7 @@ The main data model is the `Solution` interface in `src/lib/data.ts`:
 ## Development Notes
 
 - **AI Integration**: Requires `LLAMA_API_KEY` environment variable (see `.env.example`)
+- **Database**: SQLite database with automatic initialization and migrations
 - **Authentication**: React Context system ready for backend integration
 - **Export functionality**: Planned for CSV, PDF, and JSON formats
 - **Styling**: shadcn/ui patterns with Tailwind utility classes
@@ -119,8 +165,12 @@ The main data model is the `Solution` interface in `src/lib/data.ts`:
 
 - **AI Provider Migration**: Switched from Google Genkit to Llama API client for better reliability
 - **Simplified AI Flows**: Replaced complex Genkit flows with direct Llama API calls
+- **Database Integration**: Complete SQLite implementation with better-sqlite3
+- **API Layer**: RESTful API routes for all data operations
+- **Data Persistence**: Full replacement of mock data with database storage
 - **Authentication System**: Full implementation with React Context, login modal, and protected routes
 - **Route Consolidation**: Merged `/browse` functionality into landing page (`/`)
 - **UI Simplification**: Removed hero/featured sections, focused on marketplace functionality
 - **Hydration Fixes**: Replaced random username generation with static deterministic usernames
 - **Fixed "Next: Train AI" Button**: Resolved API integration issues and form validation
+- **Solution Drafts**: Added draft/published status workflow for creators
