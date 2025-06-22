@@ -117,7 +117,7 @@ function ArrayRenderer({ items, fieldName }: { items: any[]; fieldName: string }
           <TableHeader>
             <TableRow>
               {headers.map(header => (
-                <TableHead key={header} className="align-top">
+                <TableHead key={header} className="text-center align-middle">
                   {formatFieldName(header)}
                 </TableHead>
               ))}
@@ -145,7 +145,7 @@ function ArrayRenderer({ items, fieldName }: { items: any[]; fieldName: string }
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>{formatFieldName(fieldName)}</TableHead>
+            <TableHead className="text-center align-middle">{formatFieldName(fieldName)}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -173,8 +173,8 @@ function ObjectRenderer({ obj }: { obj: Record<string, any> }) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Field</TableHead>
-            <TableHead>Value</TableHead>
+            <TableHead className="text-center align-middle">Field</TableHead>
+            <TableHead className="text-center align-middle">Value</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -263,8 +263,8 @@ export function ResultsViewer({ data, format = 'auto' }: ResultsViewerProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[200px] align-top">Field</TableHead>
-                <TableHead className="align-top">Value</TableHead>
+                <TableHead className="w-[200px] text-center align-middle">Field</TableHead>
+                <TableHead className="text-center align-middle">Value</TableHead>
               </TableRow>
             </TableHeader>
           <TableBody>
