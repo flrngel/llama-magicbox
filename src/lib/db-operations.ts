@@ -86,6 +86,7 @@ export function updateSolution(solutionId: string, updates: Partial<Solution>): 
     updates.targetUsers ?? current.targetUsers,
     updates.systemInstructions ?? current.systemInstructions,
     updates.modelOutputStructure ?? current.modelOutputStructure,
+    updates.creator ?? current.creator,
     solutionId
   );
 

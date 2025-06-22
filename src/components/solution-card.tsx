@@ -26,7 +26,7 @@ export function SolutionCard({ solution }: SolutionCardProps) {
           {solution.name || 'Untitled Solution'}
         </CardTitle>
         <CardDescription className="truncate">
-          {solution.creator || 'Draft solution'}
+          {solution.creator || (isDraft ? 'Draft solution' : 'Unknown creator')}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow">

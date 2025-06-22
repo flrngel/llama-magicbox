@@ -199,7 +199,7 @@ function getStatements() {
       updateSolution: database.prepare(`
         UPDATE solutions SET 
           name = ?, description = ?, problem_description = ?, target_users = ?,
-          system_instructions = ?, model_output_structure = ?, updated_at = CURRENT_TIMESTAMP
+          system_instructions = ?, model_output_structure = ?, creator = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `),
       updateSolutionStatus: database.prepare(`
@@ -275,10 +275,39 @@ function rowToUser(row: any): User {
   };
 }
 
+// Migrate existing data to fix creator fields
+function migrateCreatorFields() {
+  const database = getDatabase();
+  
+  // Find all published solutions with empty creator fields
+  const solutionsNeedingCreator = database.prepare(`
+    SELECT s.id, s.creator_id, u.name as user_name 
+    FROM solutions s 
+    LEFT JOIN users u ON s.creator_id = u.id 
+    WHERE s.status = 'published' AND (s.creator IS NULL OR s.creator = '')
+  `).all();
+  
+  if (solutionsNeedingCreator.length > 0) {
+    console.log(`Migrating ${solutionsNeedingCreator.length} solutions with missing creator fields...`);
+    
+    const updateCreatorStmt = database.prepare(`
+      UPDATE solutions SET creator = ? WHERE id = ?
+    `);
+    
+    for (const solution of solutionsNeedingCreator as any[]) {
+      const creatorName = solution.user_name ? `by ${solution.user_name}` : 'by Unknown Creator';
+      updateCreatorStmt.run(creatorName, solution.id);
+    }
+    
+    console.log('Creator field migration completed!');
+  }
+}
+
 // Initialize database
 function initializeDatabase() {
   createTables();
   seedDefaultData();
+  migrateCreatorFields();
 }
 
 // Seed with default data if tables are empty
