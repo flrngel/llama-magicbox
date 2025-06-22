@@ -523,7 +523,15 @@ function CreatePageContent() {
                 <div className="flex justify-center gap-4">
                     <Button variant="outline" asChild><Link href="/">View in Marketplace</Link></Button>
                     <Button onClick={resetCreateFlow}>Share More Knowledge</Button>
-                    <Button><Share2 className="mr-2 h-4 w-4"/>Share</Button>
+                    <Button
+                      onClick={() => {
+                        const url = `${window.location.origin}/use/${currentSolution?.slug}`;
+                        navigator.clipboard.writeText(url);
+                        toast({ title: "Link copied!", description: "Share this link with others to let them use your knowledge model." });
+                      }}
+                    >
+                      <Share2 className="mr-2 h-4 w-4"/>Share
+                    </Button>
                 </div>
             </div>
           )}
