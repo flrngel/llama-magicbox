@@ -4,8 +4,8 @@ import { AuthProvider } from "@/lib/auth";
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'MagicBox',
-  description: 'Turn Your Expertise Into AI Solutions',
+  title: 'MagicBox - No-Code AI Modeling for Creators',
+  description: 'Share your knowledge through AI. Build intelligent solutions without coding and monetize your expertise.',
 };
 
 export default function RootLayout({

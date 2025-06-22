@@ -82,13 +82,14 @@ export default function Home() {
           <div className="text-center space-y-4 mb-12">
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
               <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Solution Marketplace
+                Share Your Knowledge
               </span>
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 md:text-xl/relaxed max-w-2xl mx-auto">
-              Discover and use AI solutions built by experts in the community.
+            <p className="text-gray-600 dark:text-gray-400 md:text-xl/relaxed max-w-3xl mx-auto">
+              No-code AI modeling tool for creators to build and monetize intelligent solutions from their expertise
             </p>
           </div>
+
           
           {/* Search, Filter, and Sort */}
           <div className="flex flex-col md:flex-row gap-4 mb-10 max-w-4xl mx-auto">

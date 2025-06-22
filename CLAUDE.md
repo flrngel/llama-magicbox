@@ -14,13 +14,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Architecture
 
-MagicBox is a crowdsourced AI platform where creators train specialized document processing solutions that users can instantly access. Think "Airbnb for life solutions" - democratizing expertise while creating new income streams.
+MagicBox is a no-code AI modeling tool for creators to share their knowledge. Experts build AI models from their expertise without coding, making their knowledge accessible to everyone while earning from each use.
 
 ### Core Concept (from idea.md)
 
-**Two-Sided Marketplace:**
-- **CREATORS**: Experts who train AI solutions with their knowledge (tax pros, property managers, healthcare advocates)
-- **USERS**: Regular people who need expert-level document processing instantly
+**Knowledge Sharing Platform:**
+- **CREATORS**: Experts who build AI models from their knowledge without coding (tax pros, consultants, analysts)
+- **USERS**: People who need expert insights applied to their documents instantly
 
 **Revenue Model**: Creators earn 70% when their solutions are used, platform takes 30%
 

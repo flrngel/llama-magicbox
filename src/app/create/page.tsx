@@ -420,22 +420,22 @@ function CreatePageContent() {
             <Card className="max-w-xl mx-auto">
               <CardHeader>
                 <CardTitle className="font-headline">
-                  1. {editSolutionId ? 'Edit Your Solution' : 'Define Your Solution'}
+                  1. {editSolutionId ? 'Edit Your Knowledge Model' : 'Share Your Expertise'}
                 </CardTitle>
-                <CardDescription>What problem will your AI solve and what is the desired output?</CardDescription>
+                <CardDescription>Define what knowledge you want to share and how AI should structure it</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* FIX: Removed `|| ''` as the initial state now guarantees these fields exist. */}
-                <div className="space-y-2"><Label htmlFor="solution-name">Solution Name</Label><Input id="solution-name" placeholder="e.g., Tax Receipt Organizer" value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} maxLength={50} required /></div>
-                <div className="space-y-2"><Label htmlFor="problem-description">Problem Description</Label><Textarea id="problem-description" placeholder="e.g., Categorize business receipts for tax filing..." value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} minLength={20} maxLength={200} required /></div>
-                <div className="space-y-2"><Label htmlFor="target-users">Target Users (Optional)</Label><Input id="target-users" placeholder="e.g., Small business owners, freelancers" value={formData.targetUsers} onChange={(e) => setFormData(prev => ({ ...prev, targetUsers: e.target.value }))} maxLength={100} /></div>
+                <div className="space-y-2"><Label htmlFor="solution-name">Knowledge Model Name</Label><Input id="solution-name" placeholder="e.g., Tax Receipt Analyzer, Contract Review Assistant" value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} maxLength={50} required /></div>
+                <div className="space-y-2"><Label htmlFor="problem-description">What knowledge are you sharing?</Label><Textarea id="problem-description" placeholder="e.g., I know how to categorize business receipts for tax filing and identify deductible expenses..." value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} minLength={20} maxLength={200} required /></div>
+                <div className="space-y-2"><Label htmlFor="target-users">Who will benefit? (Optional)</Label><Input id="target-users" placeholder="e.g., Small business owners, freelancers, accountants" value={formData.targetUsers} onChange={(e) => setFormData(prev => ({ ...prev, targetUsers: e.target.value }))} maxLength={100} /></div>
                 <div className="space-y-2">
                   <Label htmlFor="model-output-description">
-                    Desired Output Fields {hasExistingOutputStructure && "(Optional - structure already exists)"}
+                    What insights should the AI extract? {hasExistingOutputStructure && "(Optional - structure already exists)"}
                   </Label>
                   <Textarea 
                     id="model-output-description" 
-                    placeholder="Describe the fields you want the AI to extract, e.g., 'vendor name, transaction date, total amount'" 
+                    placeholder="Describe what information your model should identify, e.g., 'vendor name, transaction date, total amount, expense category'" 
                     value={outputStructureDescription} 
                     onChange={(e) => setOutputStructureDescription(e.target.value)} 
                     minLength={hasExistingOutputStructure ? 0 : 10} 
@@ -443,8 +443,8 @@ function CreatePageContent() {
                   />
                   <p className="text-xs text-muted-foreground">
                     {hasExistingOutputStructure 
-                      ? "Leave blank to keep existing structure, or provide new description to regenerate."
-                      : "The AI will generate a technical format based on your description."
+                      ? "Leave blank to keep existing structure, or describe new insights to extract."
+                      : "No coding required - just describe in plain language what you want to extract."
                     }
                   </p>
                 </div>
@@ -470,13 +470,13 @@ function CreatePageContent() {
           )}
           {step === 3 && currentSolution && (
             <div>
-              <h2 className="text-2xl font-bold mb-4 font-headline">3. Test Your Solution</h2>
+              <h2 className="text-2xl font-bold mb-4 font-headline">3. Validate Your Knowledge Model</h2>
               <Card>
                 <CardContent className="p-6 space-y-6">
                   <div>
-                    <h3 className="font-bold mb-2">Upload a test document</h3>
+                    <h3 className="font-bold mb-2">Test with a real document</h3>
                     <p className="text-sm text-muted-foreground mb-3">
-                      Upload a sample document to test your solution. Maximum 30MB file size.
+                      Upload a sample document to see how your AI model extracts insights. Maximum 30MB file size.
                     </p>
                     <FileUploader 
                       key={solutionId || 'new-solution'} 
@@ -489,7 +489,7 @@ function CreatePageContent() {
                     </Button>
                   </div>
                   <div>
-                    <h3 className="font-bold mb-2">Results Preview</h3>
+                    <h3 className="font-bold mb-2">AI-Extracted Insights</h3>
                     {isTesting ? (
                         <div className="text-center text-muted-foreground p-8">Processing...</div>
                     ) : testError ? (
@@ -501,8 +501,8 @@ function CreatePageContent() {
                     )}
                   </div>
                   <div className="mt-8 flex justify-end gap-2">
-                    <Button variant="outline" onClick={handleBack}>Refine Training</Button>
-                    <Button onClick={handlePublish} disabled={!isStep3Valid}>Publish Solution</Button>
+                    <Button variant="outline" onClick={handleBack}>Refine Model</Button>
+                    <Button onClick={handlePublish} disabled={!isStep3Valid}>Share Your Knowledge</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -511,8 +511,8 @@ function CreatePageContent() {
           {step === 4 && (
             <div className="text-center max-w-xl mx-auto py-16">
                 <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4"/>
-                <h2 className="text-3xl font-bold mb-4 font-headline">Solution Published!</h2>
-                <p className="text-muted-foreground mb-8">Your solution is now live and available in the marketplace.</p>
+                <h2 className="text-3xl font-bold mb-4 font-headline">Knowledge Model Live!</h2>
+                <p className="text-muted-foreground mb-8">Your expertise is now accessible to everyone. Start earning from your knowledge.</p>
                 <Card className="text-left mb-8 shadow-lg">
                     <CardHeader><CardTitle className="font-headline">{currentSolution?.name}</CardTitle><CardDescription>{currentSolution?.creator}</CardDescription></CardHeader>
                     <CardContent>
@@ -522,7 +522,7 @@ function CreatePageContent() {
                 </Card>
                 <div className="flex justify-center gap-4">
                     <Button variant="outline" asChild><Link href="/">View in Marketplace</Link></Button>
-                    <Button onClick={resetCreateFlow}>Create Another</Button>
+                    <Button onClick={resetCreateFlow}>Share More Knowledge</Button>
                     <Button><Share2 className="mr-2 h-4 w-4"/>Share</Button>
                 </div>
             </div>
@@ -542,7 +542,7 @@ export default function CreatePage() {
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p>Loading Creator Studio...</p>
+            <p>Loading Knowledge Studio...</p>
           </div>
         </main>
         <Footer />

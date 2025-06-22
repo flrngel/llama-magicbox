@@ -437,8 +437,8 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold font-headline">Training Studio</h2>
-          <p className="text-muted-foreground">Train your AI with example documents</p>
+          <h2 className="text-2xl font-bold font-headline">2. Teach Your AI Model</h2>
+          <p className="text-muted-foreground">Show your AI examples of your expertise - no coding required</p>
         </div>
         <Button variant="ghost" onClick={onBack}>
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -449,12 +449,12 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
       {/* Training Progress */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Training Progress</CardTitle>
+          <CardTitle className="text-lg">Knowledge Transfer Progress</CardTitle>
           <CardDescription>
             {isEditingExistingSolution && (
-              <span className="text-blue-600 font-medium">Editing existing solution • </span>
+              <span className="text-blue-600 font-medium">Refining knowledge model • </span>
             )}
-            {approvedCount} of {totalCount} documents approved • {Math.round(overallConfidence)}% confidence
+            {approvedCount} of {totalCount} examples approved • {Math.round(overallConfidence)}% AI understanding
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -462,11 +462,11 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>
               {isEditingExistingSolution 
-                ? "Continue with current training or add new documents" 
-                : "Need at least 2 documents with 1+ approved"
+                ? "Continue teaching or add new examples" 
+                : "Teach with at least 2 examples, approve 1+"
               }
             </span>
-            <span>{isReadyToComplete ? 'Ready for testing!' : 'Keep training...'}</span>
+            <span>{isReadyToComplete ? 'AI ready to share your knowledge!' : 'Keep teaching...'}</span>
           </div>
         </CardContent>
       </Card>
@@ -476,7 +476,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
         <div className="lg:col-span-1">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Training Documents</CardTitle>
+              <CardTitle className="text-lg">Example Documents</CardTitle>
               <CardDescription>
                 Upload and train with example documents
                 <br />

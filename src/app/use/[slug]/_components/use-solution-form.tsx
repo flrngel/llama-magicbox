@@ -121,12 +121,12 @@ export function UseSolutionForm({ solution }: UseSolutionFormProps) {
     <div className="space-y-8">
       <Card>
         <CardHeader>
-            <CardTitle>1. Upload Documents</CardTitle>
+            <CardTitle>1. Access Expert Knowledge</CardTitle>
             <CardDescription>
-              Upload up to 10 documents to process with this solution. All files will be processed simultaneously for faster results.
+              Upload your documents to leverage the creator's expertise. AI will extract insights based on their knowledge model.
               <br />
               <span className="text-xs text-muted-foreground mt-1 block">
-                Supports 40+ file formats including PDF, Office docs, images, audio files. Maximum 30MB per file.
+                Supports 40+ file formats • Process up to 10 files at once • Maximum 30MB per file
               </span>
             </CardDescription>
         </CardHeader>
@@ -137,7 +137,7 @@ export function UseSolutionForm({ solution }: UseSolutionFormProps) {
       
       <div className="flex justify-center gap-4">
         <Button size="lg" onClick={handleProcess} disabled={isProcessing || files.length === 0}>
-            {isProcessing ? "Processing..." : `Process ${files.length} Document${files.length !== 1 ? 's' : ''}`}
+            {isProcessing ? "Applying Knowledge..." : `Apply AI Knowledge to ${files.length} File${files.length !== 1 ? 's' : ''}`}
             <Sparkles className="ml-2 h-5 w-5"/>
         </Button>
         {(fileResults.length > 0 || files.length > 0) && (
@@ -159,11 +159,11 @@ export function UseSolutionForm({ solution }: UseSolutionFormProps) {
       {fileResults.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>2. View Results</CardTitle>
+            <CardTitle>2. Knowledge Extracted</CardTitle>
             <CardDescription className="space-y-2">
               <div>
-                Results for {fileResults.length} document{fileResults.length !== 1 ? 's' : ''}.
-                {isProcessing && " Processing in progress..."}
+                AI insights from {fileResults.length} document{fileResults.length !== 1 ? 's' : ''} using creator's expertise.
+                {isProcessing && " Extracting knowledge..."}
               </div>
               {fileResults.length > 0 && (
                 <div className="text-sm">
@@ -198,7 +198,7 @@ export function UseSolutionForm({ solution }: UseSolutionFormProps) {
                 
                 {fileResult.isLoading && (
                   <div className="flex items-center justify-center p-6 text-muted-foreground">
-                    <p>AI is processing this document...</p>
+                    <p>AI is applying the creator's knowledge model...</p>
                   </div>
                 )}
                 

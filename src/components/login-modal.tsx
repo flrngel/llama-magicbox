@@ -61,7 +61,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
         <DialogHeader>
           <DialogTitle>Welcome to MagicBox</DialogTitle>
           <DialogDescription>
-            Sign in to create your own AI solutions or create a new account.
+            Sign in to share your knowledge through AI or create a new account.
           </DialogDescription>
         </DialogHeader>
         
