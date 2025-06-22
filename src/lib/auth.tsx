@@ -7,6 +7,7 @@ export interface User {
   name: string;
   email: string;
   avatar?: string;
+  createdAt?: string;
 }
 
 interface AuthContextType {
@@ -14,6 +15,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
+  updateUser: (updatedUser: User) => void;
   isLoading: boolean;
 }
 
@@ -43,7 +45,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: '1',
           name: 'Demo User',
           email: email,
-          avatar: 'https://avatar.vercel.sh/demo'
+          avatar: 'https://avatar.vercel.sh/demo',
+          createdAt: new Date().toISOString()
         };
         setUser(mockUser);
         localStorage.setItem('magicbox_user', JSON.stringify(mockUser));
@@ -67,7 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: Date.now().toString(),
         name,
         email,
-        avatar: `https://avatar.vercel.sh/${email}`
+        avatar: `https://avatar.vercel.sh/${email}`,
+        createdAt: new Date().toISOString()
       };
       setUser(newUser);
       localStorage.setItem('magicbox_user', JSON.stringify(newUser));
@@ -83,8 +87,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('magicbox_user');
   };
 
+  const updateUser = (updatedUser: User) => {
+    setUser(updatedUser);
+    localStorage.setItem('magicbox_user', JSON.stringify(updatedUser));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
