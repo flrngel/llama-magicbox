@@ -119,9 +119,6 @@ yarn install
 cp .env.example .env.local
 # Add your LLAMA_API_KEY to .env.local
 
-# Initialize database
-yarn db:seed
-
 # Start development server
 yarn dev
 ```
