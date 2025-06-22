@@ -10,6 +10,7 @@ import Link from "next/link";
 import { RatingStats } from "@/components/rating-stats";
 import { ShareButton } from "./_components/share-button";
 import { EditButton } from "./_components/edit-button";
+import { UnpublishButton } from "./_components/unpublish-button";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -110,6 +111,11 @@ export default async function UseSolutionPage({ params }: Props) {
                   <EditButton 
                     solutionId={solution.id} 
                     creatorId={solution.creatorId} 
+                  />
+                  <UnpublishButton
+                    solutionId={solution.id}
+                    creatorId={solution.creatorId}
+                    solutionName={solution.name}
                   />
                 </div>
               </div>

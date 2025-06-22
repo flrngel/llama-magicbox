@@ -294,6 +294,11 @@ function getStatements() {
           status = 'published', slug = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `),
+      unpublishSolution: database.prepare(`
+        UPDATE solutions SET 
+          status = 'draft', updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `),
       incrementUsageCount: database.prepare(`
         UPDATE solutions SET usage_count = usage_count + 1, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?

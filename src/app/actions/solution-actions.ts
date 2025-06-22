@@ -207,3 +207,45 @@ export async function publishSolutionAction(
     };
   }
 }
+
+// Unpublish a solution (change status back to draft)
+export async function unpublishSolutionAction(solutionId: string): Promise<UpdateSolutionResult> {
+  try {
+    ensureInitialized();
+    const statements = getStatements();
+    
+    // Get current solution to verify it exists and is published
+    const currentRow = statements.getSolutionById.get(solutionId);
+    if (!currentRow) {
+      return {
+        success: false,
+        error: 'Solution not found'
+      };
+    }
+    
+    if (currentRow.status !== 'published') {
+      return {
+        success: false,
+        error: 'Solution is not published'
+      };
+    }
+    
+    // Update status to draft
+    statements.unpublishSolution.run(solutionId);
+    
+    // Return updated solution
+    const updatedRow = statements.getSolutionById.get(solutionId);
+    const updatedSolution = rowToSolution(updatedRow);
+    
+    return {
+      success: true,
+      data: updatedSolution
+    };
+  } catch (error) {
+    console.error('Error unpublishing solution:', error);
+    return {
+      success: false,
+      error: 'Failed to unpublish solution'
+    };
+  }
+}
