@@ -86,7 +86,7 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-gray-600 dark:text-gray-400 md:text-xl/relaxed max-w-3xl mx-auto">
-              No-code AI modeling tool for creators to build and monetize intelligent solutions from their expertise
+              No-code AI modeling tool for creators to build intelligent solutions from their expertise
             </p>
           </div>
 
