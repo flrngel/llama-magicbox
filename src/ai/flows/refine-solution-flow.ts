@@ -53,7 +53,10 @@ Good response: "Got it! I've updated the instructions to prioritize extracting v
 
 Bad response: "I've updated the instructions. Here's the extracted data: {vendor: 'ABC Corp', amount: 150.00}..." 
 
-Return JSON with: {"updatedSystemInstructions": "...", "aiResponse": "..."}`;
+CRITICAL: Return ONLY a raw JSON object with this exact structure:
+{"updatedSystemInstructions": "your improved instructions here", "aiResponse": "your conversational response here"}
+
+Do NOT include any markdown, explanations, or text outside the JSON object.`;
 
     const response = await callLlama([
       { role: 'system', content: 'You are an expert at creating system prompts for AI assistants. Always return valid JSON.' },
@@ -63,7 +66,30 @@ Return JSON with: {"updatedSystemInstructions": "...", "aiResponse": "..."}`;
     try {
       if (response) {
         const responseStr = typeof response === 'string' ? response : String(response);
-        const parsed = JSON.parse(responseStr.trim());
+        
+        // Try to extract JSON from markdown or text response
+        let jsonStr = responseStr.trim();
+        
+        // Remove markdown code blocks if present
+        if (jsonStr.includes('```json')) {
+          const jsonMatch = jsonStr.match(/```json\s*(\{[\s\S]*?\})\s*```/);
+          if (jsonMatch) {
+            jsonStr = jsonMatch[1];
+          }
+        } else if (jsonStr.includes('```')) {
+          const jsonMatch = jsonStr.match(/```\s*(\{[\s\S]*?\})\s*```/);
+          if (jsonMatch) {
+            jsonStr = jsonMatch[1];
+          }
+        }
+        
+        // Try to find the last JSON object in the response
+        const jsonMatches = jsonStr.match(/\{[^{}]*"updatedSystemInstructions"[^{}]*"aiResponse"[^{}]*\}/g);
+        if (jsonMatches) {
+          jsonStr = jsonMatches[jsonMatches.length - 1];
+        }
+        
+        const parsed = JSON.parse(jsonStr);
         return {
           updatedSystemInstructions: parsed.updatedSystemInstructions || input.currentInstructions || '',
           aiResponse: parsed.aiResponse || 'I\'ve updated the instructions based on your feedback.'
@@ -72,6 +98,9 @@ Return JSON with: {"updatedSystemInstructions": "...", "aiResponse": "..."}`;
         throw new Error('No response received');
       }
     } catch (parseError) {
+      console.error('Failed to parse refinement response:', parseError);
+      console.error('Raw response:', response);
+      
       // Fallback if JSON parsing fails
       return {
         updatedSystemInstructions: input.currentInstructions || 'You are a helpful AI assistant. Extract information from the provided document based on the user\'s requirements and return it as a structured JSON object.',

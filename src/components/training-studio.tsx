@@ -27,8 +27,8 @@ export interface TrainingDocument {
 }
 
 interface TrainingStudioProps {
-  solution: Partial<Solution>;
-  updateSolution: (updates: Partial<Solution>) => void;
+  solution: Solution;
+  updateSolution: (updates: Partial<Solution>) => Promise<void>;
   onComplete: () => void;
   onBack: () => void;
 }
@@ -77,7 +77,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
 
         setTrainingDocuments(prev => [...prev, newDocument]);
 
-        // Process document immediately
+        // Process document immediately with latest instructions
         try {
           console.log('TrainingStudio processing new upload with instructions:', solution.systemInstructions);
           const result = await processDocument({

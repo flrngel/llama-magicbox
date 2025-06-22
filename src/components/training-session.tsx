@@ -23,13 +23,12 @@ import { TrainingDocument } from "./training-studio";
 import { Solution } from "@/lib/data";
 import { processDocument } from "@/ai/flows/process-document-flow";
 import { refineSolution } from "@/ai/flows/refine-solution-flow";
-import { updateSolutionAction } from "@/app/actions/update-solution";
 import { useToast } from "@/hooks/use-toast";
 
 interface TrainingSessionProps {
   document: TrainingDocument;
-  solution: Partial<Solution>;
-  updateSolution: (updates: Partial<Solution>) => void;
+  solution: Solution;
+  updateSolution: (updates: Partial<Solution>) => Promise<void>;
   onDocumentUpdate: (document: TrainingDocument) => void;
 }
 
@@ -42,17 +41,8 @@ export function TrainingSession({
   const [chatInput, setChatInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isChatting, setIsChatting] = useState(false);
-  const [currentInstructions, setCurrentInstructions] = useState(solution.systemInstructions || "");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-
-  // Update current instructions when solution changes
-  useEffect(() => {
-    if (solution.systemInstructions) {
-      setCurrentInstructions(solution.systemInstructions);
-      console.log('TrainingSession updated currentInstructions from solution prop:', solution.systemInstructions);
-    }
-  }, [solution.systemInstructions]);
 
   useEffect(() => {
     // Scroll to bottom when chat history changes
@@ -67,11 +57,11 @@ export function TrainingSession({
   const handleReprocess = async () => {
     setIsProcessing(true);
     try {
-      console.log('TrainingSession re-processing with currentInstructions:', currentInstructions);
-      console.log('TrainingSession solution.systemInstructions:', solution.systemInstructions);
+      // Always use the latest instructions from the solution state
+      console.log('TrainingSession re-processing with solution.systemInstructions:', solution.systemInstructions);
       const result = await processDocument({
         fileDataUri: document.dataUri,
-        systemInstructions: currentInstructions || "Extract information from this document.",
+        systemInstructions: solution.systemInstructions || "Extract information from this document.",
         modelOutputStructure: solution.modelOutputStructure || "z.object({})",
       });
 
@@ -175,54 +165,67 @@ export function TrainingSession({
         .join('\n');
 
       const refinementResult = await refineSolution({
-        currentInstructions: currentInstructions || "",
+        currentInstructions: solution.systemInstructions || "",
         userInput: userMessage.message,
         trainingContext,
         modelOutputStructure: solution.modelOutputStructure || "z.object({})",
       });
 
       if (refinementResult) {
-        // Update current instructions state FIRST
         const newInstructions = refinementResult.updatedSystemInstructions;
-        setCurrentInstructions(newInstructions);
         
-        // Update global solution state
-        console.log('TrainingSession updating global solution with:', newInstructions);
-        updateSolution({ 
+        // Update server-side solution state immediately
+        console.log('TrainingSession updating solution with new instructions:', newInstructions);
+        console.log('Previous instructions were:', solution.systemInstructions);
+        await updateSolution({ 
           systemInstructions: newInstructions 
         });
-        
-        // Force immediate state sync by updating the solution prop used in re-processing
-        console.log('TrainingSession currentInstructions updated to:', newInstructions);
+        console.log('Solution update completed');
 
-        // Persist to database if solution has an ID
-        if (solution.id) {
-          try {
-            const result = await updateSolutionAction(solution.id, {
-              systemInstructions: refinementResult.updatedSystemInstructions
-            });
-            if (!result.success) {
-              console.error('Failed to persist instructions to database:', result.error);
-            }
-          } catch (error) {
-            console.error('Failed to persist instructions to database:', error);
-            // Still continue with the UI update
-          }
-        }
-
-        // Add AI response
+        // Add AI response first
         const aiMessage = {
           sender: 'ai' as const,
           message: refinementResult.aiResponse,
           timestamp: new Date()
         };
 
-        const finalDocument = {
-          ...updatedWithUserMessage,
-          chatHistory: [...updatedWithUserMessage.chatHistory, aiMessage]
-        };
+        // Force reprocess with new instructions to immediately show the effect
+        setTimeout(async () => {
+          try {
+            const reprocessResult = await processDocument({
+              fileDataUri: document.dataUri,
+              systemInstructions: newInstructions,
+              modelOutputStructure: solution.modelOutputStructure || "z.object({})",
+            });
 
-        onDocumentUpdate(finalDocument);
+            const confidence = calculateConfidence(reprocessResult);
+            const reprocessedDocument: TrainingDocument = {
+              ...updatedWithUserMessage,
+              status: 'ready',
+              aiOutput: reprocessResult,
+              confidence,
+              chatHistory: [
+                ...updatedWithUserMessage.chatHistory,
+                aiMessage,
+                {
+                  sender: 'ai',
+                  message: `I've applied the updated instructions and reprocessed the document. You can see the improved output above.`,
+                  timestamp: new Date()
+                }
+              ]
+            };
+
+            onDocumentUpdate(reprocessedDocument);
+          } catch (error) {
+            console.error('Error reprocessing with new instructions:', error);
+            // If reprocessing fails, at least show the chat response
+            const fallbackDocument = {
+              ...updatedWithUserMessage,
+              chatHistory: [...updatedWithUserMessage.chatHistory, aiMessage]
+            };
+            onDocumentUpdate(fallbackDocument);
+          }
+        }, 100);
 
         toast({ 
           title: "Instructions Updated", 

@@ -57,6 +57,8 @@ export interface Solution {
    * Example: "z.object({ name: z.string(), amount: z.number() })"
    */
   modelOutputStructure: string;
+  /** Status of the solution: 'draft' for work-in-progress, 'published' for live solutions */
+  status: 'draft' | 'published';
   createdAt: Date;
   updatedAt: Date;
 }

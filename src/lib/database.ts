@@ -18,9 +18,14 @@ function getDatabase() {
   return db;
 }
 
-// Create tables if they don't exist
+// Create tables if they don't exist and handle migrations
 function createTables() {
   const database = getDatabase();
+  
+  // Check if we need to migrate existing tables
+  const tableInfo = database.pragma("table_info(solutions)");
+  const hasStatusColumn = (tableInfo as any[]).some((col: any) => col.name === 'status');
+  
   // Users table
   database.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -33,27 +38,103 @@ function createTables() {
     );
   `);
 
-  // Solutions table
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS solutions (
-      id TEXT PRIMARY KEY,
-      slug TEXT NOT NULL UNIQUE,
-      name TEXT NOT NULL,
-      description TEXT NOT NULL,
-      problem_description TEXT NOT NULL,
-      target_users TEXT NOT NULL,
-      creator_id TEXT NOT NULL,
-      creator TEXT NOT NULL,
-      usage_count INTEGER DEFAULT 0,
-      rating REAL DEFAULT 0,
-      category TEXT NOT NULL CHECK (category IN ('Tax & Finance', 'Medical & Insurance', 'Rental & Legal', 'Personal Organization')),
-      system_instructions TEXT NOT NULL,
-      model_output_structure TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (creator_id) REFERENCES users (id)
-    );
-  `);
+  // Solutions table - handle both new table creation and migration
+  if (!hasStatusColumn) {
+    // If table exists but doesn't have status column, we need to migrate
+    const existingTables = database.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='solutions'").all();
+    
+    if (existingTables.length > 0) {
+      console.log('Migrating existing solutions table to add status column...');
+      
+      // Add the status column with default value
+      database.exec(`ALTER TABLE solutions ADD COLUMN status TEXT NOT NULL DEFAULT 'published'`);
+      
+      // Make other fields nullable for draft support
+      database.exec(`
+        CREATE TABLE solutions_new (
+          id TEXT PRIMARY KEY,
+          slug TEXT UNIQUE,
+          name TEXT,
+          description TEXT,
+          problem_description TEXT,
+          target_users TEXT,
+          creator_id TEXT NOT NULL,
+          creator TEXT,
+          usage_count INTEGER DEFAULT 0,
+          rating REAL DEFAULT 0,
+          category TEXT CHECK (category IN ('Tax & Finance', 'Medical & Insurance', 'Rental & Legal', 'Personal Organization')),
+          system_instructions TEXT,
+          model_output_structure TEXT,
+          status TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published')),
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (creator_id) REFERENCES users (id)
+        );
+      `);
+      
+      // Copy existing data
+      database.exec(`
+        INSERT INTO solutions_new 
+        SELECT id, slug, name, description, problem_description, target_users, 
+               creator_id, creator, usage_count, rating, category, 
+               system_instructions, model_output_structure, status,
+               created_at, updated_at 
+        FROM solutions;
+      `);
+      
+      // Drop old table and rename new one
+      database.exec(`DROP TABLE solutions;`);
+      database.exec(`ALTER TABLE solutions_new RENAME TO solutions;`);
+      
+      console.log('Migration completed successfully!');
+    } else {
+      // Create new table
+      database.exec(`
+        CREATE TABLE solutions (
+          id TEXT PRIMARY KEY,
+          slug TEXT UNIQUE,
+          name TEXT,
+          description TEXT,
+          problem_description TEXT,
+          target_users TEXT,
+          creator_id TEXT NOT NULL,
+          creator TEXT,
+          usage_count INTEGER DEFAULT 0,
+          rating REAL DEFAULT 0,
+          category TEXT CHECK (category IN ('Tax & Finance', 'Medical & Insurance', 'Rental & Legal', 'Personal Organization')),
+          system_instructions TEXT,
+          model_output_structure TEXT,
+          status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (creator_id) REFERENCES users (id)
+        );
+      `);
+    }
+  } else {
+    // Table already has status column, just ensure it exists
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS solutions (
+        id TEXT PRIMARY KEY,
+        slug TEXT UNIQUE,
+        name TEXT,
+        description TEXT,
+        problem_description TEXT,
+        target_users TEXT,
+        creator_id TEXT NOT NULL,
+        creator TEXT,
+        usage_count INTEGER DEFAULT 0,
+        rating REAL DEFAULT 0,
+        category TEXT CHECK (category IN ('Tax & Finance', 'Medical & Insurance', 'Rental & Legal', 'Personal Organization')),
+        system_instructions TEXT,
+        model_output_structure TEXT,
+        status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (creator_id) REFERENCES users (id)
+      );
+    `);
+  }
 
   // Data items table
   database.exec(`
@@ -75,6 +156,7 @@ function createTables() {
     CREATE INDEX IF NOT EXISTS idx_solutions_creator_id ON solutions(creator_id);
     CREATE INDEX IF NOT EXISTS idx_solutions_category ON solutions(category);
     CREATE INDEX IF NOT EXISTS idx_solutions_slug ON solutions(slug);
+    CREATE INDEX IF NOT EXISTS idx_solutions_status ON solutions(status);
     CREATE INDEX IF NOT EXISTS idx_data_items_solution_id ON data_items(solution_id);
   `);
 }
@@ -97,11 +179,17 @@ function getStatements() {
         INSERT INTO solutions (
           id, slug, name, description, problem_description, target_users,
           creator_id, creator, usage_count, rating, category,
-          system_instructions, model_output_structure
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          system_instructions, model_output_structure, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `),
+      insertDraftSolution: database.prepare(`
+        INSERT INTO solutions (id, creator_id, status) VALUES (?, ?, 'draft')
       `),
       getAllSolutions: database.prepare(`
-        SELECT * FROM solutions ORDER BY created_at DESC
+        SELECT * FROM solutions WHERE status = 'published' ORDER BY created_at DESC
+      `),
+      getDraftSolutionsByCreator: database.prepare(`
+        SELECT * FROM solutions WHERE creator_id = ? AND status = 'draft' ORDER BY updated_at DESC
       `),
       getSolutionById: database.prepare('SELECT * FROM solutions WHERE id = ?'),
       getSolutionBySlug: database.prepare('SELECT * FROM solutions WHERE slug = ?'),
@@ -109,6 +197,14 @@ function getStatements() {
         UPDATE solutions SET 
           name = ?, description = ?, problem_description = ?, target_users = ?,
           system_instructions = ?, model_output_structure = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `),
+      updateSolutionStatus: database.prepare(`
+        UPDATE solutions SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      `),
+      publishSolution: database.prepare(`
+        UPDATE solutions SET 
+          status = 'published', slug = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `),
       incrementUsageCount: database.prepare(`
@@ -148,6 +244,7 @@ function rowToSolution(row: any): Solution {
     trainingDataItems: [], // Will be populated separately
     systemInstructions: row.system_instructions,
     modelOutputStructure: row.model_output_structure,
+    status: row.status || 'published', // Default for backwards compatibility
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
@@ -248,7 +345,8 @@ function seedDefaultData() {
         solution.rating,
         solution.category,
         solution.systemInstructions,
-        solution.modelOutputStructure
+        solution.modelOutputStructure,
+        'published' // Default status for seed data
       );
     }
 
