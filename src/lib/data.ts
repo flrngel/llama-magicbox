@@ -57,7 +57,7 @@ export interface Solution {
   targetUsers: string;
   /** The ID of the user who created this solution. */
   creatorId: string;
-  /** A human-readable creator name, e.g., "by CleverPanda42" */
+  /** The creator's name from the users table (populated via join) */
   creator: string;
   usageCount: number;
   rating: number;

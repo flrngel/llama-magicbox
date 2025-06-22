@@ -86,7 +86,6 @@ export function updateSolution(solutionId: string, updates: Partial<Solution>): 
     updates.targetUsers ?? current.targetUsers,
     updates.systemInstructions ?? current.systemInstructions,
     updates.modelOutputStructure ?? current.modelOutputStructure,
-    updates.creator ?? current.creator,
     solutionId
   );
 
@@ -148,12 +147,8 @@ export function publishSolutionWithDataItems(
       userEmail = 'demo@example.com';
       userName = 'Demo User';
     } else {
-      // Extract username from creator field (format: "by Username")
-      userName = solutionData.creator.startsWith('by ') ? 
-        solutionData.creator.substring(3) : 
-        solutionData.creator;
-      
-      // Generate email for the user
+      // Generate default username and email for the user
+      userName = `User ${solutionData.creatorId}`;
       userEmail = `user${solutionData.creatorId}@example.com`;
     }
     
@@ -178,12 +173,12 @@ export function publishSolutionWithDataItems(
     solutionData.problemDescription,
     solutionData.targetUsers,
     solutionData.creatorId,
-    solutionData.creator,
     0, // usageCount
     0, // rating
     solutionData.category,
     solutionData.systemInstructions,
-    solutionData.modelOutputStructure
+    solutionData.modelOutputStructure,
+    'published' // status
   );
 
   // 4. Create data items and link them to the new solution

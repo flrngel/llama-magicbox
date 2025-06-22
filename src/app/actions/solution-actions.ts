@@ -73,7 +73,6 @@ export async function updateSolutionAction(
         currentRow.target_users || updates.targetUsers || '',
         updates.systemInstructions,
         currentRow.model_output_structure || updates.modelOutputStructure || '',
-        updates.creator || currentRow.creator || '', // Preserve existing creator
         solutionId
       );
     } else {
@@ -85,7 +84,6 @@ export async function updateSolutionAction(
         updates.targetUsers || currentRow.target_users || '',
         updates.systemInstructions || currentRow.system_instructions || '',
         updates.modelOutputStructure || currentRow.model_output_structure || '',
-        updates.creator || currentRow.creator || '', // Preserve existing creator
         solutionId
       );
     }
@@ -168,7 +166,6 @@ export async function publishSolutionAction(
     problemDescription: string;
     targetUsers: string;
     category: Solution['category'];
-    creator: string;
   }
 ): Promise<PublishSolutionResult> {
   try {
@@ -186,7 +183,6 @@ export async function publishSolutionAction(
       publishData.targetUsers,
       currentRow.system_instructions || '', // Keep existing system instructions
       currentRow.model_output_structure || '', // Keep existing model output structure
-      publishData.creator, // Now includes creator field
       solutionId
     );
     

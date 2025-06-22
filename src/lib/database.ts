@@ -59,7 +59,6 @@ function createTables() {
           problem_description TEXT,
           target_users TEXT,
           creator_id TEXT NOT NULL,
-          creator TEXT,
           usage_count INTEGER DEFAULT 0,
           rating REAL DEFAULT 0,
           category TEXT CHECK (category IN ('Tax & Finance', 'Medical & Insurance', 'Rental & Legal', 'Personal Organization')),
@@ -76,7 +75,7 @@ function createTables() {
       database.exec(`
         INSERT INTO solutions_new 
         SELECT id, slug, name, description, problem_description, target_users, 
-               creator_id, creator, usage_count, rating, category, 
+               creator_id, usage_count, rating, category, 
                system_instructions, model_output_structure, status,
                created_at, updated_at 
         FROM solutions;
@@ -98,7 +97,6 @@ function createTables() {
           problem_description TEXT,
           target_users TEXT,
           creator_id TEXT NOT NULL,
-          creator TEXT,
           usage_count INTEGER DEFAULT 0,
           rating REAL DEFAULT 0,
           category TEXT CHECK (category IN ('Tax & Finance', 'Medical & Insurance', 'Rental & Legal', 'Personal Organization')),
@@ -134,6 +132,52 @@ function createTables() {
         FOREIGN KEY (creator_id) REFERENCES users (id)
       );
     `);
+  }
+
+  // Check if we need to remove creator column
+  const currentTableInfo = database.pragma("table_info(solutions)");
+  const hasCreatorColumn = (currentTableInfo as any[]).some((col: any) => col.name === 'creator');
+  
+  if (hasCreatorColumn) {
+    console.log('Migrating solutions table to remove creator column...');
+    
+    // Create new table without creator column
+    database.exec(`
+      CREATE TABLE solutions_new (
+        id TEXT PRIMARY KEY,
+        slug TEXT UNIQUE,
+        name TEXT,
+        description TEXT,
+        problem_description TEXT,
+        target_users TEXT,
+        creator_id TEXT NOT NULL,
+        usage_count INTEGER DEFAULT 0,
+        rating REAL DEFAULT 0,
+        category TEXT CHECK (category IN ('Tax & Finance', 'Medical & Insurance', 'Rental & Legal', 'Personal Organization')),
+        system_instructions TEXT,
+        model_output_structure TEXT,
+        status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (creator_id) REFERENCES users (id)
+      );
+    `);
+    
+    // Copy data (excluding creator column)
+    database.exec(`
+      INSERT INTO solutions_new 
+      SELECT id, slug, name, description, problem_description, target_users, 
+             creator_id, usage_count, rating, category, 
+             system_instructions, model_output_structure, status,
+             created_at, updated_at 
+      FROM solutions;
+    `);
+    
+    // Drop old table and rename new one
+    database.exec(`DROP TABLE solutions;`);
+    database.exec(`ALTER TABLE solutions_new RENAME TO solutions;`);
+    
+    console.log('Migration completed - creator column removed!');
   }
 
   // Data items table
@@ -196,28 +240,50 @@ function getStatements() {
       insertSolution: database.prepare(`
         INSERT INTO solutions (
           id, slug, name, description, problem_description, target_users,
-          creator_id, creator, usage_count, rating, category,
+          creator_id, usage_count, rating, category,
           system_instructions, model_output_structure, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `),
       insertDraftSolution: database.prepare(`
         INSERT INTO solutions (id, creator_id, status) VALUES (?, ?, 'draft')
       `),
       getAllSolutions: database.prepare(`
-        SELECT * FROM solutions WHERE status = 'published' ORDER BY created_at DESC
+        SELECT s.*, u.name as creator_name 
+        FROM solutions s
+        LEFT JOIN users u ON s.creator_id = u.id
+        WHERE s.status = 'published' 
+        ORDER BY s.created_at DESC
       `),
       getDraftSolutionsByCreator: database.prepare(`
-        SELECT * FROM solutions WHERE creator_id = ? AND status = 'draft' ORDER BY updated_at DESC
+        SELECT s.*, u.name as creator_name 
+        FROM solutions s
+        LEFT JOIN users u ON s.creator_id = u.id
+        WHERE s.creator_id = ? AND s.status = 'draft' 
+        ORDER BY s.updated_at DESC
       `),
       getSolutionsByCreator: database.prepare(`
-        SELECT * FROM solutions WHERE creator_id = ? ORDER BY updated_at DESC
+        SELECT s.*, u.name as creator_name 
+        FROM solutions s
+        LEFT JOIN users u ON s.creator_id = u.id
+        WHERE s.creator_id = ? 
+        ORDER BY s.updated_at DESC
       `),
-      getSolutionById: database.prepare('SELECT * FROM solutions WHERE id = ?'),
-      getSolutionBySlug: database.prepare('SELECT * FROM solutions WHERE slug = ?'),
+      getSolutionById: database.prepare(`
+        SELECT s.*, u.name as creator_name 
+        FROM solutions s
+        LEFT JOIN users u ON s.creator_id = u.id
+        WHERE s.id = ?
+      `),
+      getSolutionBySlug: database.prepare(`
+        SELECT s.*, u.name as creator_name 
+        FROM solutions s
+        LEFT JOIN users u ON s.creator_id = u.id
+        WHERE s.slug = ?
+      `),
       updateSolution: database.prepare(`
         UPDATE solutions SET 
           name = ?, description = ?, problem_description = ?, target_users = ?,
-          system_instructions = ?, model_output_structure = ?, creator = ?, updated_at = CURRENT_TIMESTAMP
+          system_instructions = ?, model_output_structure = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `),
       updateSolutionStatus: database.prepare(`
@@ -260,7 +326,7 @@ function getStatements() {
 }
 
 // Helper functions to convert between database rows and TypeScript objects
-function rowToSolution(row: any): Solution {
+export function rowToSolution(row: any): Solution {
   return {
     id: row.id,
     slug: row.slug,
@@ -269,7 +335,7 @@ function rowToSolution(row: any): Solution {
     problemDescription: row.problem_description,
     targetUsers: row.target_users,
     creatorId: row.creator_id,
-    creator: row.creator,
+    creator: row.creator_name || 'Unknown creator',
     usageCount: row.usage_count,
     rating: row.rating,
     category: row.category,
@@ -316,39 +382,10 @@ function rowToRating(row: any): Rating {
   };
 }
 
-// Migrate existing data to fix creator fields
-function migrateCreatorFields() {
-  const database = getDatabase();
-  
-  // Find all published solutions with empty creator fields
-  const solutionsNeedingCreator = database.prepare(`
-    SELECT s.id, s.creator_id, u.name as user_name 
-    FROM solutions s 
-    LEFT JOIN users u ON s.creator_id = u.id 
-    WHERE s.status = 'published' AND (s.creator IS NULL OR s.creator = '')
-  `).all();
-  
-  if (solutionsNeedingCreator.length > 0) {
-    console.log(`Migrating ${solutionsNeedingCreator.length} solutions with missing creator fields...`);
-    
-    const updateCreatorStmt = database.prepare(`
-      UPDATE solutions SET creator = ? WHERE id = ?
-    `);
-    
-    for (const solution of solutionsNeedingCreator as any[]) {
-      const creatorName = solution.user_name ? `by ${solution.user_name}` : 'by Unknown Creator';
-      updateCreatorStmt.run(creatorName, solution.id);
-    }
-    
-    console.log('Creator field migration completed!');
-  }
-}
-
 // Initialize database
 function initializeDatabase() {
   createTables();
   seedDefaultData();
-  migrateCreatorFields();
 }
 
 // Seed with default data if tables are empty
@@ -367,7 +404,15 @@ function seedDefaultData() {
     ];
 
     for (const user of defaultUsers) {
-      stmts.insertUser.run(user.id, user.name, user.email, user.avatar);
+      try {
+        stmts.insertUser.run(user.id, user.name, user.email, user.avatar);
+      } catch (error: any) {
+        if (error.message.includes('UNIQUE constraint failed')) {
+          console.log(`User ${user.email} already exists, skipping...`);
+        } else {
+          throw error;
+        }
+      }
     }
 
     // Create default solutions
@@ -380,7 +425,6 @@ function seedDefaultData() {
         problemDescription: "This solution automatically extracts key information from your receipts, like vendor, date, and amount, and categorizes them for easy tax filing.",
         targetUsers: "Small business owners, freelancers, accountants",
         creatorId: "user-42",
-        creator: "by CleverPanda42",
         usageCount: 47,
         rating: 4.5,
         category: "Tax & Finance" as const,
@@ -395,7 +439,6 @@ function seedDefaultData() {
         problemDescription: "Quickly pull applicant names, contact info, and employment history from various rental application formats into a structured summary.",
         targetUsers: "Landlords, property managers",
         creatorId: "user-91",
-        creator: "by AgileEagle91",
         usageCount: 89,
         rating: 4.2,
         category: "Rental & Legal" as const,
@@ -413,7 +456,6 @@ function seedDefaultData() {
         solution.problemDescription,
         solution.targetUsers,
         solution.creatorId,
-        solution.creator,
         solution.usageCount,
         solution.rating,
         solution.category,

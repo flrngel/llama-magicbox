@@ -216,7 +216,6 @@ function CreatePageContent() {
         problemDescription: currentSolution.description!,
         targetUsers: currentSolution.targetUsers!,
         category: (currentSolution.category || 'Personal Organization') as Solution['category'],
-        creator: `by ${user!.name}`,
       });
       
       if (result.success) {
