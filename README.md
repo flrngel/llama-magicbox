@@ -1,38 +1,27 @@
-# 📦 MagicBox - AI Marketplace for Document Processing
+# 📦 MagicBox - No-Code AI Document Processing Tool
 
-> **Turn expertise into income. Process documents instantly.**
+> **Turn your expertise into AI models. No coding required.**
 
-MagicBox is a two-sided marketplace where domain experts create AI solutions that process documents, and users get instant, affordable document processing. Built for the Llama 4 Impact Hackathon Seattle 2025.
+MagicBox is a no-code platform where domain experts can create AI solutions that process documents instantly. Train AI through natural conversation and share your expertise with the world. Built for the Llama 4 Impact Hackathon Seattle 2025.
 
 ## 🎯 The Problem We Solve
 
-Every day, millions struggle with document processing:
-- **Small businesses** drown in receipts during tax season
-- **Patients** can't understand medical insurance claims  
-- **Landlords** manually extract data from rental applications
-- **Everyone** pays $200+/hour for simple document tasks
+Every day, professionals struggle with repetitive document processing:
+- **Tax professionals** manually categorize hundreds of receipts
+- **HR managers** extract data from countless resumes  
+- **Legal teams** review contracts for key terms
+- **Healthcare workers** process insurance forms
+
+Traditional solutions require expensive developers or generic AI tools that don't understand domain-specific needs.
 
 ## 💡 Our Solution
 
-MagicBox creates a win-win marketplace:
-
-### For Experts (Creators)
-- **Monetize your knowledge** - Turn expertise into passive income
-- **No coding required** - Train AI through natural conversation
-- **Earn while you sleep** - 70% revenue share on every use
-
-### For Users
-- **Instant processing** - Upload any document, get structured data in seconds
-- **Affordable** - Pay $3-5 per use instead of hourly consulting fees
-- **Expert-quality** - AI trained by actual professionals in the field
-
-## 🚀 Key Features
+MagicBox empowers experts to create custom AI solutions through:
 
 ### 🎨 No-Code AI Creation
-1. **Define** your solution (name, description, target users)
-2. **Upload** 2-5 example documents
-3. **Train** AI through conversational interface
-4. **Publish** to marketplace in minutes
+- **Conversational Training** - Teach AI by chatting, no programming needed
+- **Visual Interface** - Drag, drop, and approve training examples
+- **Instant Testing** - See results immediately and refine on the fly
 
 ### 📄 Universal Document Support
 - **40+ file formats**: PDF, Word, Excel, PowerPoint, Images, Audio, ZIP archives
@@ -42,26 +31,35 @@ MagicBox creates a win-win marketplace:
 
 ### 🤖 Intelligent Processing
 - **Llama 4 API** for advanced document understanding
-- **Dynamic output schemas** generated from natural language
-- **Conversational refinement** to improve accuracy
-- **Real-time processing** with instant results
+- **Dynamic schemas** generated from natural language descriptions
+- **Real-time refinement** through conversational feedback
+- **Structured output** in clean, exportable formats
 
-### 💰 Marketplace Features
-- **Browse & search** solutions by category
-- **Ratings & reviews** from verified users
-- **Usage tracking** and analytics
-- **Secure payments** (payment integration ready)
+## 🚀 Key Features
+
+### For Solution Creators
+1. **Define Your Expertise** - Name your solution and describe what it does
+2. **Train with Examples** - Upload 2-5 sample documents
+3. **Refine Through Chat** - Tell the AI what to focus on
+4. **Test & Validate** - Ensure accuracy before publishing
+5. **Share Your Knowledge** - Make your solution available to others
+
+### For Solution Users
+- **Browse Solutions** - Find AI models created by experts
+- **Instant Processing** - Upload documents and get results in seconds
+- **Clean Output** - View data in tables or export to Excel/CSV
+- **Rate & Review** - Provide feedback to improve solutions
 
 ## 🛠️ Technical Stack
 
 ### Frontend
-- **Next.js 15** - Full-stack React framework
+- **Next.js 15** - Full-stack React framework with App Router
 - **TypeScript** - Type-safe development
 - **Tailwind CSS** - Modern utility-first styling
 - **shadcn/ui** - Beautiful, accessible components
 
 ### Backend
-- **SQLite** - Persistent data storage with migrations
+- **SQLite** - Lightweight persistent storage with migrations
 - **Server Actions** - Type-safe API layer
 - **Python Integration** - Isolated environments for document processing
 
@@ -81,8 +79,8 @@ MagicBox creates a win-win marketplace:
 magicbox/
 ├── src/
 │   ├── app/                    # Next.js app router pages
-│   │   ├── (landing)/         # Public marketplace
-│   │   ├── create/            # Solution creation flow
+│   │   ├── (landing)/         # Public solution gallery
+│   │   ├── create/            # 4-step solution creation
 │   │   ├── use/[slug]/        # Solution usage pages
 │   │   └── api/               # API routes
 │   ├── components/            # React components
@@ -136,59 +134,79 @@ LLAMA_API_KEY=your_llama_api_key_here
 
 ## 🎮 Demo Walkthrough
 
-### Creating a Solution (Expert Flow)
+### Creating a Solution
 
-1. **Sign in** and click "Create Solution"
-2. **Define** your solution:
+1. **Click "Create Solution"** from the homepage
+2. **Define Your Solution** (Step 1):
    - Name: "Smart Tax Receipt Organizer"
-   - Description: Process receipts for tax filing
-   - Target users: Small business owners
-3. **Train** your AI:
-   - Upload 2-5 example receipts
-   - Chat with AI to refine understanding
-   - Approve training examples
-4. **Test** with new documents
-5. **Publish** to marketplace
+   - Description: What your AI will do
+   - Output structure: What data to extract
+3. **Train Your AI** (Step 2):
+   - Upload 2-5 example documents
+   - Chat with AI to improve understanding
+   - Approve or refine each training example
+4. **Test Your Solution** (Step 3):
+   - Upload a test document
+   - Verify AI extracts data correctly
+5. **Publish** (Step 4):
+   - Give your solution a unique URL
+   - Add detailed description
+   - Choose a category
 
-### Using a Solution (User Flow)
+### Using a Solution
 
-1. **Browse** marketplace or search
-2. **Select** a solution (e.g., "Tax Receipt Organizer")
+1. **Browse** available solutions
+2. **Select** one that fits your needs
 3. **Upload** your documents (any format)
 4. **Get results** instantly in structured format
-5. **Export** to Excel/CSV or copy data
-
-## 📊 Business Model
-
-- **Transaction fees**: 30% platform fee on each use
-- **Creator earnings**: 70% revenue share
-- **Typical pricing**: $3-10 per document processed
-- **Scale potential**: Thousands of creators × thousands of users
+5. **Export** data or copy to clipboard
 
 ## 🏆 Why MagicBox Wins
 
-1. **Network Effects** - More creators → better solutions → more users → more creators
-2. **No Competition** - First marketplace for AI document processing solutions
-3. **Real Expertise** - Solutions by professionals, not generic AI
-4. **Instant Value** - Users see ROI immediately ($3 vs $200/hour)
-5. **Technical Moat** - Advanced document processing pipeline
+1. **True No-Code** - Anyone can create AI solutions without programming
+2. **Domain Expertise** - Solutions built by professionals who understand the field
+3. **Instant Value** - Process documents in seconds, not hours
+4. **Universal Support** - Works with virtually any document format
+5. **Conversational Training** - Natural way to teach AI
+
+## 🎯 Use Cases
+
+### Tax & Accounting
+- Receipt categorization
+- Expense report processing
+- Invoice data extraction
+
+### Human Resources
+- Resume parsing
+- Application screening
+- Benefits enrollment processing
+
+### Legal
+- Contract review
+- Compliance checking
+- Legal document summarization
+
+### Healthcare
+- Insurance form processing
+- Medical record extraction
+- Patient intake automation
 
 ## 🎯 Hackathon Alignment
 
 ### Llama 4 Integration
-- Uses latest Llama 4 API for document understanding
-- Leverages conversational capabilities for training
+- Leverages Llama 4's advanced language understanding
+- Uses conversational capabilities for intuitive training
 - Dynamic prompt engineering for accuracy
 
 ### Impact Categories
-- **💼 Economic** - Democratizes access to professional expertise
-- **🌍 Social** - Makes document processing affordable for everyone
-- **💰 Financial** - Creates new income streams for experts
-- **⚡ Efficiency** - Reduces hours of work to seconds
+- **⚡ Efficiency** - Reduces document processing from hours to seconds
+- **🌍 Accessibility** - Makes AI accessible to non-technical experts
+- **💡 Innovation** - First truly no-code AI training platform
+- **📚 Knowledge Sharing** - Democratizes expertise across domains
 
-## 🤝 Team
+## 🤝 Contributing
 
-Built with ❤️ for the Llama 4 Impact Hackathon Seattle 2025
+We welcome contributions! Please see our contributing guidelines for more information.
 
 ## 📄 License
 
@@ -196,6 +214,6 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ---
 
-**🌟 Ready to revolutionize document processing?**
+**🌟 Ready to turn your expertise into AI?**
 
 Visit [MagicBox Demo](#) | [Video Demo](#) | [Pitch Deck](pitch.md)
