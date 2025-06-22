@@ -491,10 +491,10 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
   const selectedDocument = trainingDocuments.find(doc => doc.id === selectedDocumentId);
   const approvedCount = trainingDocuments.filter(doc => doc.status === 'approved').length;
   const totalCount = trainingDocuments.length;
-  // More lenient completion requirements for editing existing solutions
+  // Completion requirements: at least 1 approved document for all solutions
   const isReadyToComplete = isEditingExistingSolution 
-    ? true // Allow proceeding for existing solutions (they already have system instructions)
-    : (totalCount >= 2 && approvedCount >= 1 && overallConfidence >= 70); // Original requirements for new solutions
+    ? (approvedCount >= 1) // Existing solutions need at least 1 approved document
+    : (totalCount >= 2 && approvedCount >= 1 && overallConfidence >= 70); // New solutions need 2+ documents, 1+ approved, 70%+ confidence
 
   return (
     <div className="space-y-6">
@@ -526,7 +526,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>
               {isEditingExistingSolution 
-                ? "Continue teaching or add new examples" 
+                ? "Approve at least 1 example to continue" 
                 : "Teach with at least 2 examples, approve 1+"
               }
             </span>
@@ -674,8 +674,10 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
           disabled={!isReadyToComplete}
         >
           {isReadyToComplete 
-            ? 'Test Solution' 
-            : `Need ${Math.max(0, 2 - totalCount)} more documents`
+            ? 'Next: Test Solution' 
+            : isEditingExistingSolution && approvedCount === 0
+              ? 'Need at least 1 approved document'
+              : `Need ${Math.max(0, 2 - totalCount)} more documents`
           }
         </Button>
       </div>
