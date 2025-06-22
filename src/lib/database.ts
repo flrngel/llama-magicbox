@@ -303,6 +303,7 @@ function getStatements() {
         UPDATE solutions SET usage_count = usage_count + 1, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `),
+      deleteSolution: database.prepare('DELETE FROM solutions WHERE id = ?'),
 
       // Data items
       insertDataItem: database.prepare(`

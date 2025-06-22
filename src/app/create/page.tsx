@@ -16,7 +16,18 @@ import { ResultsViewer } from "@/components/results-viewer";
 import { TrainingStudio } from "@/components/training-studio";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle, Share2, Sparkles, Lock, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle, Share2, Sparkles, Lock, Loader2, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Solution } from "@/lib/data";
 import { createSolution } from "@/lib/data-client";
 import { useToast } from "@/hooks/use-toast";
@@ -26,7 +37,8 @@ import {
   createDraftSolution, 
   updateSolutionAction, 
   getSolutionAction,
-  publishSolutionAction 
+  publishSolutionAction,
+  deleteSolutionAction 
 } from "@/app/actions/solution-actions";
 import { createOrGetUser } from "@/app/actions/user-actions";
 
@@ -365,6 +377,47 @@ function CreatePageContent() {
     }
   }, [solutionId]);
 
+  // Delete solution
+  const [isDeleting, setIsDeleting] = useState(false);
+  const handleDeleteSolution = async () => {
+    if (!solutionId) return;
+    
+    setIsDeleting(true);
+    try {
+      const result = await deleteSolutionAction(solutionId);
+      
+      if (result.success) {
+        toast({
+          title: "Solution Deleted",
+          description: "Your solution has been permanently deleted.",
+        });
+        
+        // Reset state and go back to step 1
+        resetCreateFlow();
+        
+        // Remove edit parameter from URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete('edit');
+        window.history.replaceState({}, '', url.toString());
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete solution",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting solution:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Refresh solution data when entering step 3
   const refreshSolutionData = useCallback(async () => {
     if (!solutionId) return;
@@ -418,10 +471,54 @@ function CreatePageContent() {
           {step === 1 && (
             <Card className="max-w-xl mx-auto">
               <CardHeader>
-                <CardTitle className="font-headline">
-                  1. {editSolutionId ? 'Edit Your Knowledge Model' : 'Share Your Expertise'}
-                </CardTitle>
-                <CardDescription>Define what knowledge you want to share and how AI should structure it</CardDescription>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="font-headline">
+                      1. {editSolutionId ? 'Edit Your Knowledge Model' : 'Share Your Expertise'}
+                    </CardTitle>
+                    <CardDescription className="mt-1">Define what knowledge you want to share and how AI should structure it</CardDescription>
+                  </div>
+                  {editSolutionId && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          disabled={isDeleting}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Solution?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{currentSolution?.name || 'this solution'}"? 
+                            <br /><br />
+                            This action cannot be undone. It will permanently delete:
+                            <ul className="list-disc list-inside space-y-1 mt-2">
+                              <li>The solution and all its settings</li>
+                              <li>All training documents and examples</li>
+                              <li>All ratings and usage history</li>
+                            </ul>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleDeleteSolution}
+                            disabled={isDeleting}
+                            className="bg-destructive hover:bg-destructive/90"
+                          >
+                            {isDeleting ? "Deleting..." : "Delete Solution"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* FIX: Removed `|| ''` as the initial state now guarantees these fields exist. */}

@@ -249,3 +249,33 @@ export async function unpublishSolutionAction(solutionId: string): Promise<Updat
     };
   }
 }
+
+// Delete a solution and all its related data
+export async function deleteSolutionAction(solutionId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    ensureInitialized();
+    const statements = getStatements();
+    
+    // Get current solution to verify it exists
+    const currentRow = statements.getSolutionById.get(solutionId);
+    if (!currentRow) {
+      return {
+        success: false,
+        error: 'Solution not found'
+      };
+    }
+    
+    // Delete the solution (cascade will delete related data_items)
+    statements.deleteSolution.run(solutionId);
+    
+    return {
+      success: true
+    };
+  } catch (error) {
+    console.error('Error deleting solution:', error);
+    return {
+      success: false,
+      error: 'Failed to delete solution'
+    };
+  }
+}
