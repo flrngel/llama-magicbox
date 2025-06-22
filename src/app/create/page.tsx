@@ -181,8 +181,11 @@ function CreatePageContent() {
   }, [currentSolution]);
 
   // Clear form data when switching from edit mode to create mode
+  // Only reset if editSolutionId changes from having a value to null (user clicked "Create" while editing)
+  const [previousEditSolutionId, setPreviousEditSolutionId] = useState<string | null>(null);
+  
   useEffect(() => {
-    if (!editSolutionId && (currentSolution || solutionId)) {
+    if (previousEditSolutionId && !editSolutionId) {
       // User navigated from edit mode to create mode - reset everything
       setCurrentSolution(null);
       setSolutionId(null);
@@ -193,7 +196,8 @@ function CreatePageContent() {
       setTestError(null);
       setStep(1);
     }
-  }, [editSolutionId, currentSolution, solutionId]);
+    setPreviousEditSolutionId(editSolutionId);
+  }, [editSolutionId, previousEditSolutionId]);
 
 
   const handlePublish = async () => {
@@ -231,7 +235,7 @@ function CreatePageContent() {
   const handleStep1Next = async () => {
     // Basic form validation
     if (formData.name.length === 0 || formData.description.length < 20 || 
-        (!outputStructureDescription || outputStructureDescription.length < 10) && !hasExistingOutputStructure) {
+        ((!outputStructureDescription || outputStructureDescription.length < 10) && !hasExistingOutputStructure)) {
       return;
     }
     
@@ -281,7 +285,9 @@ function CreatePageContent() {
     } catch (error) {
         console.error("Error processing step 1:", error);
         toast({ title: "Update Failed", description: "Please try again.", variant: "destructive" });
-    } finally { setIsGeneratingSchema(false); }
+    } finally { 
+        setIsGeneratingSchema(false); 
+    }
   };
 
   const handleRunTest = async () => {
@@ -386,7 +392,7 @@ function CreatePageContent() {
   // Validate form using local state - if editing and already has output structure, don't require description
   const hasExistingOutputStructure = currentSolution?.modelOutputStructure;
   const isStep1Valid = formData.name.length > 0 && formData.description.length >= 20 && 
-    (outputStructureDescription.length > 10 || hasExistingOutputStructure);
+    (outputStructureDescription.length >= 10 || hasExistingOutputStructure);
   const isStep3Valid = testResult !== null;
   
   // Determine if this is an update or initial creation for button text

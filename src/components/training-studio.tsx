@@ -11,11 +11,13 @@ import { ArrowLeft, CheckCircle, AlertCircle, Clock, Plus, X } from "lucide-reac
 import { Solution, DataItem } from "@/lib/data";
 import { processDocument } from "@/ai/flows/process-document-flow";
 import { useToast } from "@/hooks/use-toast";
+import { getDataItemsAction, createDataItemAction } from "@/app/actions/data-item-actions";
 
 export interface TrainingDocument {
   id: string;
   file: File;
   dataUri: string;
+  dataItemId?: string; // Link to database record
   status: 'processing' | 'ready' | 'approved' | 'needs_work';
   aiOutput?: any;
   confidence?: number;
@@ -42,24 +44,92 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
   // Check if this is an existing solution being edited (has system instructions or is published)
   const isEditingExistingSolution = Boolean(solution.systemInstructions || solution.status === 'published');
   const [hasShownEditNotice, setHasShownEditNotice] = useState(false);
+  const [isLoadingExistingData, setIsLoadingExistingData] = useState(false);
+  const [hasLoadedPreviousTraining, setHasLoadedPreviousTraining] = useState(false);
+  const [showPreviousTrainingNotice, setShowPreviousTrainingNotice] = useState(false);
 
-  // Clear training documents when solution changes (e.g., switching from edit to create mode)
+  // Load existing training documents from database
+  const loadExistingTrainingDocuments = async () => {
+    if (!solution.id || isLoadingExistingData) return;
+    
+    setIsLoadingExistingData(true);
+    try {
+      const result = await getDataItemsAction(solution.id);
+      if (result.success && result.data && result.data.length > 0) {
+        // Convert DataItems to TrainingDocuments
+        const existingDocuments: TrainingDocument[] = await Promise.all(
+          result.data.map(async (dataItem: DataItem) => {
+            // Create a placeholder File object since we can't reconstruct the original file
+            const fileName = `training-doc-${dataItem.id.split('-').pop()}.txt`;
+            const fileContent = `Training document from previous session\nOriginal URI: ${dataItem.content_uri}`;
+            const file = new File([fileContent], fileName, { type: 'text/plain' });
+            
+            return {
+              id: `existing-${dataItem.id}`,
+              file,
+              dataUri: dataItem.content_uri,
+              dataItemId: dataItem.id,
+              status: 'approved' as const, // Mark existing training as approved
+              aiOutput: dataItem.model_output,
+              confidence: dataItem.model_output ? calculateConfidence(dataItem.model_output) : 0,
+              chatHistory: [{
+                sender: 'ai' as const,
+                message: `This is a previously trained document. Output: ${JSON.stringify(dataItem.model_output, null, 2)}`,
+                timestamp: new Date(dataItem.createdAt)
+              }]
+            };
+          })
+        );
+        
+        setTrainingDocuments(existingDocuments);
+        setHasLoadedPreviousTraining(true);
+        setShowPreviousTrainingNotice(true);
+        toast({
+          title: "Previous Training Loaded",
+          description: `Found ${existingDocuments.length} previously trained documents.`
+        });
+      }
+    } catch (error) {
+      console.error('Error loading existing training documents:', error);
+      toast({
+        title: "Loading Error",
+        description: "Could not load previous training documents.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingExistingData(false);
+    }
+  };
+
+  // Clear training documents when solution changes and load existing ones if editing
   useEffect(() => {
     setTrainingDocuments([]);
     setSelectedDocumentId(null);
     setHasShownEditNotice(false);
-  }, [solution.id]);
-
-  // Show notice for editing existing solutions
-  useEffect(() => {
-    if (isEditingExistingSolution && !hasShownEditNotice) {
-      toast({
-        title: "Editing Existing Solution",
-        description: "Previous training documents aren't available in edit mode. You can upload new documents to continue training.",
-      });
-      setHasShownEditNotice(true);
+    setHasLoadedPreviousTraining(false);
+    setShowPreviousTrainingNotice(false);
+    
+    // Load existing training documents if editing an existing solution
+    if (isEditingExistingSolution && solution.id) {
+      loadExistingTrainingDocuments();
     }
-  }, [isEditingExistingSolution, hasShownEditNotice, toast]);
+  }, [solution.id, isEditingExistingSolution]);
+
+  // Show notice for editing existing solutions (only if no training data was found)
+  useEffect(() => {
+    if (isEditingExistingSolution && !hasShownEditNotice && !isLoadingExistingData && trainingDocuments.length === 0) {
+      // Only show this if we've finished loading and found no documents
+      const timer = setTimeout(() => {
+        toast({
+          title: "No Previous Training Found",
+          description: "This solution doesn't have saved training documents. Upload new documents to train your AI.",
+        });
+        setHasShownEditNotice(true);
+      }, 1000); // Small delay to allow loading to complete
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isEditingExistingSolution, hasShownEditNotice, isLoadingExistingData, trainingDocuments.length, toast]);
 
   // Debug: Monitor solution changes
   useEffect(() => {
@@ -121,7 +191,36 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
             modelOutputStructure: solution.modelOutputStructure || "z.object({})",
           });
 
-          // Update document with AI output
+          // Save to database and update document with AI output
+          let dataItemId: string | undefined;
+          try {
+            // Determine file type based on MIME type
+            let fileType: DataItem['type'] = 'text';
+            if (file.type.startsWith('image/')) {
+              fileType = 'image';
+            } else if (file.type === 'application/pdf') {
+              fileType = 'pdf';
+            } else if (file.type === 'text/csv') {
+              fileType = 'csv';
+            }
+
+            // Save to database
+            const saveResult = await createDataItemAction(
+              solution.id!,
+              fileType,
+              dataUri, // Store the dataUri as content
+              `Training document: ${file.name}`, // guided_prompt
+              result // model_output
+            );
+
+            if (saveResult.success && saveResult.data) {
+              dataItemId = saveResult.data.id;
+            }
+          } catch (saveError) {
+            console.error('Error saving to database:', saveError);
+            // Continue even if save fails - user can still train locally
+          }
+
           setTrainingDocuments(prev => prev.map(doc => 
             doc.id === documentId 
               ? { 
@@ -129,6 +228,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
                   status: 'ready', 
                   aiOutput: result,
                   confidence: calculateConfidence(result),
+                  dataItemId,
                   chatHistory: [{
                     sender: 'ai',
                     message: `I've processed your document. Here's what I extracted: ${JSON.stringify(result, null, 2)}. How did I do?`,
@@ -140,7 +240,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
 
           toast({ 
             title: "Document Processed", 
-            description: `${file.name} has been analyzed by the AI.`
+            description: `${file.name} has been analyzed by the AI${dataItemId ? ' and saved' : ''}.`
           });
 
         } catch (error) {
@@ -279,11 +379,25 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
               <CardDescription>Upload and train with example documents</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {isEditingExistingSolution && (
+              {isLoadingExistingData && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
                   <p className="text-sm text-blue-800">
-                    <strong>Note:</strong> Previous training documents from this solution aren't available. 
-                    Upload new documents to continue training or refine your AI.
+                    <strong>Loading previous training documents...</strong>
+                  </p>
+                </div>
+              )}
+              {isEditingExistingSolution && hasLoadedPreviousTraining && showPreviousTrainingNotice && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-md relative">
+                  <button
+                    onClick={() => setShowPreviousTrainingNotice(false)}
+                    className="absolute top-2 right-2 text-green-600 hover:text-green-800 rounded-sm hover:bg-green-100 p-1"
+                    aria-label="Dismiss notification"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  <p className="text-sm text-green-800 pr-6">
+                    <strong>Previous training loaded:</strong> Found {trainingDocuments.filter(d => d.dataItemId).length} saved training documents. 
+                    You can upload additional documents to continue training.
                   </p>
                 </div>
               )}
@@ -308,6 +422,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium truncate">
                         {doc.file.name}
+                        {doc.dataItemId && <span className="ml-1 text-xs text-green-600">(saved)</span>}
                       </span>
                       <div className="flex items-center gap-2">
                         {getStatusIcon(doc.status)}
