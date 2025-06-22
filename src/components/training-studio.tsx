@@ -429,7 +429,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
   const totalCount = trainingDocuments.length;
   // More lenient completion requirements for editing existing solutions
   const isReadyToComplete = isEditingExistingSolution 
-    ? (totalCount === 0 || (totalCount >= 1 && approvedCount >= 1)) // Allow proceeding with existing training or at least 1 new approved doc
+    ? true // Allow proceeding for existing solutions (they already have system instructions)
     : (totalCount >= 2 && approvedCount >= 1 && overallConfidence >= 70); // Original requirements for new solutions
 
   return (
@@ -611,9 +611,7 @@ export function TrainingStudio({ solution, updateSolution, onComplete, onBack }:
         >
           {isReadyToComplete 
             ? 'Test Solution' 
-            : isEditingExistingSolution
-              ? 'Upload at least 1 document to continue'
-              : `Need ${Math.max(0, 2 - totalCount)} more documents`
+            : `Need ${Math.max(0, 2 - totalCount)} more documents`
           }
         </Button>
       </div>
